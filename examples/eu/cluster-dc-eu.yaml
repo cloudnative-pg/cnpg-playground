@@ -8,6 +8,17 @@ spec:
   storage:
     size: 1Gi
 
+  affinity:
+    nodeSelector:
+      node-role.kubernetes.io/postgres: ""
+    tolerations:
+    - key: node-role.kubernetes.io/postgres
+      operator: Exists
+      effect: NoSchedule
+    enablePodAntiAffinity: true
+    topologyKey: kubernetes.io/hostname
+    podAntiAffinityType: required
+
   backup:
     barmanObjectStore:
       destinationPath: s3://backups/
