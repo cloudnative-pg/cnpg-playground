@@ -17,12 +17,26 @@ Ensure you have the following tools installed on a Unix-based system:
 You don’t need superuser privileges to run the scripts, but elevated
 permissions may be required to install the prerequisites.
 
+## Local Environment Overview
+
+This environment emulates a two-region infrastructure (EU and US), with each
+region containing:
+
+- An object storage service powered by [MinIO](https://min.io/) containers
+- A Kubernetes cluster, deployed using [Kind](https://kind.sigs.k8s.io/),
+  consisting of:
+
+    - One control plane node
+    - One node for infrastructure components
+    - One node for applications
+    - Three nodes dedicated to PostgreSQL
+
+The architecture is illustrated in the diagram below:
+
+![Local Environment Architecture](images/cnpg-playground-architecture.png)
+
 ## Setting Up the Learning Environment
 
-The environment simulates a two-region infrastructure (EU and US), each consisting of:
-
-- Object storage, powered by [MinIO](https://min.io/) containers
-- Kubernetes clusters, deployed with [Kind](https://kind.sigs.k8s.io/)
 
 To set up the environment, simply run the following script:
 
@@ -42,6 +56,34 @@ retrieve them by running:
 ```bash
 ./scripts/info.sh
 ```
+
+## Inspecting Nodes in a Kubernetes Cluster
+
+To inspect the nodes in a Kubernetes cluster, you can use the following
+command:
+
+```bash
+kubectl get nodes
+```
+
+For example, when connected to the `k8s-eu` cluster, this command will display
+output similar to:
+
+```console
+NAME                   STATUS   ROLES           AGE     VERSION
+k8s-eu-control-plane   Ready    control-plane   10m     v1.31.0
+k8s-eu-worker          Ready    infra           9m58s   v1.31.0
+k8s-eu-worker2         Ready    app             9m58s   v1.31.0
+k8s-eu-worker3         Ready    postgres        9m58s   v1.31.0
+k8s-eu-worker4         Ready    postgres        9m58s   v1.31.0
+k8s-eu-worker5         Ready    postgres        9m58s   v1.31.0
+```
+
+In this example:
+- The control plane node (`k8s-eu-control-plane`) manages the cluster.
+- Worker nodes have different roles, such as `infra` for infrastructure, `app`
+  for application workloads, and `postgres` for PostgreSQL databases. Each node
+  runs Kubernetes version `v1.31.0`.
 
 ## Nix Flakes
 

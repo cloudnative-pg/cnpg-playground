@@ -49,6 +49,7 @@ done
 
 git_repo_root=$(git rev-parse --show-toplevel)
 kube_config_path=${git_repo_root}/k8s/kube-config.yaml
+kind_config_path=${git_repo_root}/k8s/kind-cluster.yaml
 
 # Setup a separate Kubeconfig
 cd "${git_repo_root}"
@@ -74,10 +75,18 @@ docker run \
    ${MINIO_IMAGE} server /data --console-address ":9001"
 
 # Setup the EU Kind Cluster
-kind create cluster --name k8s-eu
+kind create cluster --config ${kind_config_path} --name k8s-eu
+# The `node-role.kubernetes.io` label must be set after the node have been created
+kubectl label node -l postgres.node.kubernetes.io node-role.kubernetes.io/postgres=
+kubectl label node -l infra.node.kubernetes.io node-role.kubernetes.io/infra=
+kubectl label node -l app.node.kubernetes.io node-role.kubernetes.io/app=
 
 # Setup the US Kind Cluster
-kind create cluster --name k8s-us
+kind create cluster --config ${kind_config_path} --name k8s-us
+# The `node-role.kubernetes.io` label must be set after the node have been created
+kubectl label node -l postgres.node.kubernetes.io node-role.kubernetes.io/postgres=
+kubectl label node -l infra.node.kubernetes.io node-role.kubernetes.io/infra=
+kubectl label node -l app.node.kubernetes.io node-role.kubernetes.io/app=
 
 docker network connect kind minio-eu
 docker network connect kind minio-us

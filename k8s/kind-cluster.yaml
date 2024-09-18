@@ -1,0 +1,47 @@
+kind: Cluster
+apiVersion: kind.x-k8s.io/v1alpha4
+name: cnpg
+nodes:
+
+# Control Plane node
+- role: control-plane
+
+# Infrastructure/Application nodes (2)
+- role: worker
+  labels:
+    infra.node.kubernetes.io:
+- role: worker
+  labels:
+    app.node.kubernetes.io:
+
+# PostgreSQL nodes (3)
+- role: worker
+  labels:
+    postgres.node.kubernetes.io:
+  kubeadmConfigPatches:
+  - |
+    kind: JoinConfiguration
+    nodeRegistration:
+      taints:
+      - key: node-role.kubernetes.io/postgres
+        effect: NoSchedule
+- role: worker
+  labels:
+    postgres.node.kubernetes.io:
+  kubeadmConfigPatches:
+  - |
+    kind: JoinConfiguration
+    nodeRegistration:
+      taints:
+      - key: node-role.kubernetes.io/postgres
+        effect: NoSchedule
+- role: worker
+  labels:
+    postgres.node.kubernetes.io:
+  kubeadmConfigPatches:
+  - |
+    kind: JoinConfiguration
+    nodeRegistration:
+      taints:
+      - key: node-role.kubernetes.io/postgres
+        effect: NoSchedule
