@@ -41,10 +41,18 @@ MINIO_US_ROOT_PASSWORD="${MINIO_US_ROOT_PASSWORD:-postgres5432-us}"
 # Ensure prerequisites are met
 prereqs="kind kubectl git docker"
 for cmd in $prereqs; do
-   if [ -z "$(which $cmd)" ]; then
-      echo "Missing command $cmd"
-      exit 1
-   fi
+    if ! command -v "$cmd" > /dev/null 2>&1; then
+        # Check for podman as an alternative for docker
+        if [ "$cmd" = "docker" ] && command -v podman > /dev/null 2>&1; then
+            # Define a function to replace docker with podman since we cant use aliases
+            docker() {
+                podman "$@"
+            }
+        else
+            echo "Missing command $cmd"
+            exit 1
+        fi
+    fi
 done
 
 git_repo_root=$(git rev-parse --show-toplevel)
