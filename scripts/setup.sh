@@ -56,6 +56,7 @@ cd "${git_repo_root}"
 export KUBECONFIG=${kube_config_path}
 
 # Setup the object stores
+mkdir -p minio-eu
 docker run \
    --name minio-eu \
 	 -d \
@@ -65,6 +66,7 @@ docker run \
    -u $(id -u):$(id -g) \
    ${MINIO_IMAGE} server /data --console-address ":9001"
 
+mkdir -p minio-us
 docker run \
    --name minio-us \
 	 -d \
