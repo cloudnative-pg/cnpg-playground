@@ -28,3 +28,7 @@
 
 # Go workspace file
 go.work
+
+# minio data directories
+minio-eu
+minio-us
