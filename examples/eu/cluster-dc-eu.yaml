@@ -8,6 +8,9 @@ spec:
   storage:
     size: 1Gi
 
+  monitoring:
+    enablePodMonitor: true
+
   affinity:
     nodeSelector:
       node-role.kubernetes.io/postgres: ""
