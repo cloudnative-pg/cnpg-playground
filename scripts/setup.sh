@@ -39,21 +39,26 @@ MINIO_US_ROOT_USER="${MINIO_US_ROOT_USER:-cnpg-us}"
 MINIO_US_ROOT_PASSWORD="${MINIO_US_ROOT_PASSWORD:-postgres5432-us}"
 
 # Ensure prerequisites are met
-prereqs="kind kubectl git docker"
+prereqs="kind kubectl git"
 for cmd in $prereqs; do
-    if ! command -v "$cmd" > /dev/null 2>&1; then
-        # Check for podman as an alternative for docker
-        if [ "$cmd" = "docker" ] && command -v podman > /dev/null 2>&1; then
-            # Define a function to replace docker with podman since we cant use aliases
-            docker() {
-                podman "$@"
-            }
-        else
-            echo "Missing command $cmd"
-            exit 1
-        fi
-    fi
+   if [ -z "$(which $cmd)" ]; then
+      echo "Missing command $cmd"
+      exit 1
+   fi
 done
+
+# Look for a supported container provider and use it throughout
+containerproviders="docker podman"
+for containerProvider in `which $containerproviders`; do
+    CONTAINER_PROVIDER=$containerProvider
+    break
+done
+
+# Ensure we found a supported container provider
+if [ -z ${CONTAINER_PROVIDER+x} ]; then
+    echo "Missing container provider, supported providers are $containerproviders"
+    exit 1
+fi
 
 git_repo_root=$(git rev-parse --show-toplevel)
 kube_config_path=${git_repo_root}/k8s/kube-config.yaml
@@ -65,7 +70,7 @@ export KUBECONFIG=${kube_config_path}
 
 # Setup the object stores
 mkdir -p minio-eu
-docker run \
+$CONTAINER_PROVIDER run \
    --name minio-eu \
 	 -d \
    -v "${git_repo_root}/minio-eu:/data" \
@@ -75,7 +80,7 @@ docker run \
    ${MINIO_IMAGE} server /data --console-address ":9001"
 
 mkdir -p minio-us
-docker run \
+$CONTAINER_PROVIDER run \
    --name minio-us \
 	 -d \
    -v "${git_repo_root}/minio-us:/data" \
@@ -98,8 +103,8 @@ kubectl label node -l postgres.node.kubernetes.io node-role.kubernetes.io/postgr
 kubectl label node -l infra.node.kubernetes.io node-role.kubernetes.io/infra=
 kubectl label node -l app.node.kubernetes.io node-role.kubernetes.io/app=
 
-docker network connect kind minio-eu
-docker network connect kind minio-us
+$CONTAINER_PROVIDER network connect kind minio-eu
+$CONTAINER_PROVIDER network connect kind minio-us
 
 # Create the secrets for MinIO
 for context in kind-k8s-eu kind-k8s-us; do

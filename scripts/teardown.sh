@@ -17,11 +17,18 @@
 
 set -eu
 
+# Look for a supported container provider and use it throughout
+containerproviders="docker podman"
+for containerProvider in `which $containerproviders`; do
+    CONTAINER_PROVIDER=$containerProvider
+    break
+done
+
 git_repo_root=$(git rev-parse --show-toplevel)
 cd "${git_repo_root}"
 
-docker rm minio-eu -f ||:
-docker rm minio-us -f ||:
+$CONTAINER_PROVIDER rm minio-eu -f ||:
+$CONTAINER_PROVIDER rm minio-us -f ||:
 kind delete cluster --name k8s-eu ||:
 kind delete cluster --name k8s-us ||:
 rm -fr minio-eu/* minio-eu/.minio.sys ||:
