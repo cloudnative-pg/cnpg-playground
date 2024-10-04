@@ -24,6 +24,12 @@ for containerProvider in `which $containerproviders`; do
     break
 done
 
+# Ensure we found a supported container provider
+if [ -z ${CONTAINER_PROVIDER+x} ]; then
+    echo "Missing container provider, supported providers are $containerproviders"
+    exit 1
+fi
+
 git_repo_root=$(git rev-parse --show-toplevel)
 cd "${git_repo_root}"
 
