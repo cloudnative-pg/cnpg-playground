@@ -22,7 +22,7 @@ export KUBECONFIG=${kube_config_path}
 # We need to deploy the Prometheus operator in both regions
 for context in kind-k8s-eu kind-k8s-us; do
     kubectl --context $context create ns prometheus-operator | true
-    kustomize build ${git_repo_root}/k8s/monitoring/prometheus-operator | \
+    kubectl kustomize ${git_repo_root}/k8s/monitoring/prometheus-operator | \
     kubectl --context $context apply --force-conflicts --server-side=true -f -
 done
 
@@ -30,7 +30,7 @@ done
 # There's dedicated nodes for infrastructure, we make sure that every reosurce
 # is attached to those nodes
 for context in kind-k8s-eu kind-k8s-us; do
-    kustomize build ${git_repo_root}/k8s/monitoring/prometheus-instance | \
+    kubectl kustomize ${git_repo_root}/k8s/monitoring/prometheus-instance | \
         kubectl --context=$context apply --force-conflicts --server-side=true -f - 
     kubectl --context=$context -n prometheus-operator \
             patch deployment prometheus-operator \
@@ -45,6 +45,6 @@ done
 
 # Creating Granfa instance and dashboards
 for context in kind-k8s-eu kind-k8s-us; do
-    kustomize build ${git_repo_root}/k8s/monitoring/grafana/ | \
+    kubectl kustomize ${git_repo_root}/k8s/monitoring/grafana/ | \
     kubectl --context $context apply -f -
 done
