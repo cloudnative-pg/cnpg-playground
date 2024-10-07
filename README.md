@@ -18,6 +18,12 @@ Ensure you have the following tools installed on a Unix-based system:
 You don’t need superuser privileges to run the scripts, but elevated
 permissions may be required to install the prerequisites.
 
+While not strictly required, it is highly recommended to have the following
+tools installed on the system hosting the CNPG Playground:
+
+- `curl`
+- `jq`
+
 ## Local Environment Overview
 
 This environment emulates a two-region infrastructure (EU and US), with each
