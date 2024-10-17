@@ -9,24 +9,25 @@
   outputs = { self, nixpkgs, flake-utils }:
     flake-utils.lib.eachDefaultSystem (system:
       let
-	pkgs = import nixpkgs {inherit system; };
+    pkgs = import nixpkgs {inherit system; };
       in {
-	devShells.default = pkgs.mkShell {
-	  shellHook = ''
-	    # Setup 'k' as a 'kubectl' alias
-	    source <(kubectl completion bash)
+    devShells.default = pkgs.mkShell {
+      shellHook = ''
+        # Setup 'k' as a 'kubectl' alias
+        source <(kubectl completion bash)
 
-	    alias k=kubectl
-	    complete -o default -F __start_kubectl k
-	  '';
+        alias k=kubectl
+        complete -o default -F __start_kubectl k
+      '';
 
-	  packages = [
-	    pkgs.kubectl
-	    pkgs.helm
-	    pkgs.kind
-	    pkgs.jq
-            pkgs.kubectl-cnpg
-	 ];
-	};
-      });
+      packages = [
+        pkgs.kubectl
+        pkgs.helm
+        pkgs.kind
+        pkgs.jq
+        pkgs.curl
+        pkgs.kubectl-cnpg
+     ];
+    };
+  });
 }
