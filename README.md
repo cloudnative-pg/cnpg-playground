@@ -19,11 +19,26 @@ on a Unix-based system:
 You don’t need superuser privileges to run the scripts, but elevated
 permissions may be required to install the prerequisites.
 
-While not strictly required, it is highly recommended to have the following
-tools installed on the system hosting the CNPG Playground:
+### Additional Tools
 
-- `curl`
-- `jq`
+For an improved experience with the CNPG Playground, it’s recommended to
+install the following tools:
+
+- **[`curl`](https://curl.se/)**: Command-line tool for data transfer.
+- **[`jq`](https://jqlang.github.io/jq/)**: JSON processor for handling API
+  outputs.
+- **[`stern`](https://github.com/stern/stern)**: Multi-pod log tailing tool.
+- **[`kubectx`](https://github.com/ahmetb/kubectx)**: Kubernetes context
+  switcher.
+
+Recommended `kubectl` plugins:
+
+- **[`view-secret`](https://github.com/elsesiy/kubectl-view-secret)**: Decodes
+  Kubernetes secrets.
+- **[`view-cert`](https://github.com/lmolas/kubectl-view-cert)**: Inspects TLS
+  certificates.
+
+These tools streamline working with the CNPG Playground.
 
 ## Local Environment Overview
 
