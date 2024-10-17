@@ -7,7 +7,8 @@ learning and experimenting with CloudNativePG using Docker and Kind.
 
 ## Prerequisites
 
-Ensure you have the following tools installed on a Unix-based system:
+Ensure you have the latest available versions of the following tools installed
+on a Unix-based system:
 
 - [Docker](https://www.docker.com/)  
 - [Git](https://git-scm.com/)  
@@ -43,7 +44,6 @@ The architecture is illustrated in the diagram below:
 ![Local Environment Architecture](images/cnpg-playground-architecture.png)
 
 ## Setting Up the Learning Environment
-
 
 To set up the environment, simply run the following script:
 
@@ -91,6 +91,36 @@ In this example:
 - Worker nodes have different roles, such as `infra` for infrastructure, `app`
   for application workloads, and `postgres` for PostgreSQL databases. Each node
   runs Kubernetes version `v1.31.0`.
+
+## Installing CloudNativePG on the Control Plane
+
+To install the CloudNativePG operator on a control plane, execute the following
+command:
+
+```bash
+kubectl cnpg install generate --control-plane | \
+  kubectl apply -f - --server-side
+```
+
+**Ensure that:**
+
+- You have the latest version of the `cnpg` plugin installed on your local
+  machine.
+- This installation process is repeated for each Kubernetes cluster in your
+  environment.
+
+## Cleaning up the Learning Environment
+
+When you're ready to clean up and remove all resources from the learning
+environment, run the following script to tear down the containers and
+associated resources:
+
+```bash
+./scripts/teardown.sh
+```
+
+This will safely destroy all running containers and return your environment to
+its initial state.
 
 ## Nix Flakes
 
