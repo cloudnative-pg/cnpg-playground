@@ -22,11 +22,12 @@
 
       packages = [
         pkgs.kubectl
-        pkgs.helm
+        pkgs.kubernetes-helm
         pkgs.kind
         pkgs.jq
         pkgs.curl
         pkgs.kubectl-cnpg
+        pkgs.kubectl-view-secret
      ];
     };
   });
