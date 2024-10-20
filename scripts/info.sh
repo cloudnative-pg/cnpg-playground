@@ -20,15 +20,18 @@ set -eu
 git_repo_root=$(git rev-parse --show-toplevel)
 kube_config_path=${git_repo_root}/k8s/kube-config.yaml
 
-echo "To reach the playgroud please set the following environment variable:"
-echo
-echo "export KUBECONFIG=${kube_config_path}"
-echo
-echo "To connect to the clusters:"
-echo
-echo "kubectl config use-context kind-k8s-eu"
-echo "kubectl config use-context kind-k8s-us"
-echo
-echo "To know to which cluster you're connected to:"
-echo
-echo "kubectl config current-context"
+cat <<EOF
+To access the playground clusters, ensure you set the following environment
+variable:
+
+export KUBECONFIG=${kube_config_path}
+
+To switch between clusters, use the commands below:
+
+kubectl config use-context kind-k8s-eu
+kubectl config use-context kind-k8s-us
+
+To check which cluster you’re currently connected to:
+
+kubectl config current-context
+EOF
