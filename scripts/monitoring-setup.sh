@@ -46,7 +46,6 @@ for context in kind-k8s-eu kind-k8s-us; do
             patch deployment grafana-operator-controller-manager \
             --type='merge' --patch='{"spec":{"template":{"spec":{"tolerations":[{"key":"node-role.kubernetes.io/infra","operator":"Exists","effect":"NoSchedule"}],"nodeSelector":{"node-role.kubernetes.io/infra":""}}}}}'
 done
-done
 
 # Creating Grafana instance and dashboards
 for context in kind-k8s-eu kind-k8s-us; do
@@ -55,5 +54,8 @@ for context in kind-k8s-eu kind-k8s-us; do
 done
 
 # Restart the operator
-kubectl rollout restart deployment -n cnpg-system cnpg-controller-manager
-kubectl rollout status deployment -n cnpg-system cnpg-controller-manager
+if kubectl get ns cnpg-system &> /dev/null
+then
+  kubectl rollout restart deployment -n cnpg-system cnpg-controller-manager
+  kubectl rollout status deployment -n cnpg-system cnpg-controller-manager
+fi
