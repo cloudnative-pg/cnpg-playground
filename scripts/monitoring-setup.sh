@@ -32,7 +32,7 @@ done
 # We make sure that monitoring workloads are deployed in the infrastructure node.
 for context in kind-k8s-eu kind-k8s-us; do
     kubectl kustomize ${git_repo_root}/k8s/monitoring/prometheus-instance | \
-        kubectl --context=$context apply --force-conflicts --server-side=true -f - 
+        kubectl --context=$context apply --force-conflicts --server-side=true -f -
     kubectl --context=$context -n prometheus-operator \
             patch deployment prometheus-operator \
             --type='merge' --patch='{"spec":{"template":{"spec":{"tolerations":[{"key":"node-role.kubernetes.io/infra","operator":"Exists","effect":"NoSchedule"}],"nodeSelector":{"node-role.kubernetes.io/infra":""}}}}}'
