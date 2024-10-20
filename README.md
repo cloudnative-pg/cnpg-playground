@@ -147,6 +147,29 @@ both the `kind-k8s-eu` and `kind-k8s-us` clusters.
 Ensure that you have the latest version of the `cnpg` plugin installed on your
 local machine.
 
+## Monitoring with Prometheus and Grafana
+
+The playground also includes an optional setup for evaluating Prometheus
+metrics and visualizing them with Grafana. To deploy both Prometheus and
+Grafana on the infrastructure node, run the following command:
+
+```bash
+./scripts/monitoring-setup.sh
+```
+
+To access Grafana from your local browser, open a terminal and forward the
+necessary ports locally. For example, use the following commands to forward
+ports for the EU and US environments:
+
+```bash
+kubectl --context=kind-k8s-eu port-forward -n grafana service/grafana-service 3000:3000
+kubectl --context=kind-k8s-us port-forward -n grafana service/grafana-service 3001:3000
+```
+
+This will make Grafana accessible on your local machine at
+`http://localhost:3000` for the EU environment and `http://localhost:3001` for
+the US environment.
+
 ## Cleaning up the Learning Environment
 
 When you're ready to clean up and remove all resources from the learning
