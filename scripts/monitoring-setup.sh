@@ -49,3 +49,7 @@ for context in kind-k8s-eu kind-k8s-us; do
     kubectl kustomize ${git_repo_root}/k8s/monitoring/grafana/ | \
     kubectl --context $context apply -f -
 done
+
+# Restart the operator
+kubectl rollout restart deployment -n cnpg-system cnpg-controller-manager
+kubectl rollout status deployment -n cnpg-system cnpg-controller-manager
