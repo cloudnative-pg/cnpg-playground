@@ -11,3 +11,9 @@ spec:
     security:
       admin_user: admin
       admin_password: admin
+  deployment:
+    spec:
+      template:
+        spec:
+          nodeSelector:
+            node-role.kubernetes.io/infra: ""
