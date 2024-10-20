@@ -42,6 +42,10 @@ done
 # Deploying Grafana operator
 for context in kind-k8s-eu kind-k8s-us; do
     kubectl --context $context apply --force-conflicts --server-side=true -f https://github.com/grafana/grafana-operator/releases/latest/download/kustomize-cluster_scoped.yaml
+    kubectl --context=$context -n grafana \
+            patch deployment grafana-operator-controller-manager \
+            --type='merge' --patch='{"spec":{"template":{"spec":{"tolerations":[{"key":"node-role.kubernetes.io/infra","operator":"Exists","effect":"NoSchedule"}],"nodeSelector":{"node-role.kubernetes.io/infra":""}}}}}'
+done
 done
 
 # Creating Grafana instance and dashboards
