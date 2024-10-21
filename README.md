@@ -109,20 +109,22 @@ In this example:
 
 ## Installing CloudNativePG on the Control Plane
 
-To install the CloudNativePG operator on a control plane, execute the following
-command:
+To install the latest stable version of the CloudNativePG operator on the
+control plane node in both Kubernetes clusters, run the following commands:
 
 ```bash
 kubectl cnpg install generate --control-plane | \
-  kubectl apply -f - --server-side
+  kubectl --context kind-k8s-eu apply -f - --server-side
+
+kubectl cnpg install generate --control-plane | \
+  kubectl --context kind-k8s-us apply -f - --server-side
 ```
 
-**Ensure that:**
+These commands will deploy the CloudNativePG operator with server-side apply on
+both the `kind-k8s-eu` and `kind-k8s-us` clusters.
 
-- You have the latest version of the `cnpg` plugin installed on your local
-  machine.
-- This installation process is repeated for each Kubernetes cluster in your
-  environment.
+Ensure that you have the latest version of the `cnpg` plugin installed on your
+local machine.
 
 ## Cleaning up the Learning Environment
 
