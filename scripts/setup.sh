@@ -69,7 +69,7 @@ cd "${git_repo_root}"
 export KUBECONFIG=${kube_config_path}
 
 # Setup the object stores
-mkdir -p minio-eu
+mkdir -p minio-eu/backups
 $CONTAINER_PROVIDER run \
    --name minio-eu \
 	 -d \
@@ -79,7 +79,7 @@ $CONTAINER_PROVIDER run \
    -u $(id -u):$(id -g) \
    ${MINIO_IMAGE} server /data --console-address ":9001"
 
-mkdir -p minio-us
+mkdir -p minio-us/backups
 $CONTAINER_PROVIDER run \
    --name minio-us \
 	 -d \
