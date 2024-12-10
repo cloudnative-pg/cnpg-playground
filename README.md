@@ -116,8 +116,12 @@ control plane node in both Kubernetes clusters, run the following commands:
 kubectl cnpg install generate --control-plane | \
   kubectl --context kind-k8s-eu apply -f - --server-side
 
+kubectl --context kind-k8s-eu rollout status deployment -n cnpg-system cnpg-controller-manager
+
 kubectl cnpg install generate --control-plane | \
   kubectl --context kind-k8s-us apply -f - --server-side
+
+kubectl --context kind-k8s-us rollout status deployment -n cnpg-system cnpg-controller-manager
 ```
 
 These commands will deploy the CloudNativePG operator with server-side apply on
@@ -125,6 +129,26 @@ both the `kind-k8s-eu` and `kind-k8s-us` clusters.
 
 Ensure that you have the latest version of the `cnpg` plugin installed on your
 local machine.
+
+## To install the barman-cloud backup plugin
+
+Install [cert-manager](https://cert-manager.io/docs/installation/):
+
+```bash
+kubectl apply -f https://github.com/cert-manager/cert-manager/releases/download/v1.16.2/cert-manager.yaml
+
+kubectl rollout status deployment -n cert-manager cert-manager
+kubectl rollout status deployment -n cert-manager cert-manager-cainjector
+kubectl rollout status deployment -n cert-manager cert-manager-webhook
+```
+
+Install the [barman-cloud plugin](https://github.com/cloudnative-pg/plugin-barman-cloud):
+
+```bash
+kubectl apply -f https://raw.githubusercontent.com/cloudnative-pg/plugin-barman-cloud/refs/heads/main/manifest.yaml
+
+kubectl rollout status deployment -n cnpg-system barman-cloud
+```
 
 ## Cleaning up the Learning Environment
 
@@ -158,3 +182,23 @@ sudo sysctl fs.inotify.max_user_instances=512
 ```
 
 More information in the [relative ticket comment](https://github.com/kubernetes-sigs/kind/issues/3423#issuecomment-1872074526).
+
+## Using Rancher Desktop
+
+You may need to follow the instructions [in the Rancher Desktop
+Guide](https://docs.rancherdesktop.io/how-to-guides/increasing-open-file-limit/)
+to increase the open file limit.
+
+```
+provision:
+- mode: system
+  script: |
+    #!/bin/sh
+    cat <<'EOF' > /etc/security/limits.d/rancher-desktop.conf
+    * soft     nofile         82920
+    * hard     nofile         82920
+    EOF
+    sysctl -w vm.max_map_count=262144
+    sysctl fs.inotify.max_user_watches=524288
+    sysctl fs.inotify.max_user_instances=512
+```
