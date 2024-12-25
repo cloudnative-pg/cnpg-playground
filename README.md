@@ -93,19 +93,19 @@ output similar to:
 
 ```console
 NAME                   STATUS   ROLES           AGE     VERSION
-k8s-eu-control-plane   Ready    control-plane   10m     v1.31.0
-k8s-eu-worker          Ready    infra           9m58s   v1.31.0
-k8s-eu-worker2         Ready    app             9m58s   v1.31.0
-k8s-eu-worker3         Ready    postgres        9m58s   v1.31.0
-k8s-eu-worker4         Ready    postgres        9m58s   v1.31.0
-k8s-eu-worker5         Ready    postgres        9m58s   v1.31.0
+k8s-eu-control-plane   Ready    control-plane   10m     v1.32.0
+k8s-eu-worker          Ready    infra           9m58s   v1.32.0
+k8s-eu-worker2         Ready    app             9m58s   v1.32.0
+k8s-eu-worker3         Ready    postgres        9m58s   v1.32.0
+k8s-eu-worker4         Ready    postgres        9m58s   v1.32.0
+k8s-eu-worker5         Ready    postgres        9m58s   v1.32.0
 ```
 
 In this example:
 - The control plane node (`k8s-eu-control-plane`) manages the cluster.
 - Worker nodes have different roles, such as `infra` for infrastructure, `app`
   for application workloads, and `postgres` for PostgreSQL databases. Each node
-  runs Kubernetes version `v1.31.0`.
+  runs Kubernetes version `v1.32.0`.
 
 ## Installing CloudNativePG on the Control Plane
 
@@ -116,8 +116,14 @@ control plane node in both Kubernetes clusters, run the following commands:
 kubectl cnpg install generate --control-plane | \
   kubectl --context kind-k8s-eu apply -f - --server-side
 
+kubectl --context kind-k8s-eu rollout status deployment \
+  -n cnpg-system cnpg-controller-manager
+
 kubectl cnpg install generate --control-plane | \
   kubectl --context kind-k8s-us apply -f - --server-side
+
+kubectl --context kind-k8s-us rollout status deployment \
+  -n cnpg-system cnpg-controller-manager
 ```
 
 These commands will deploy the CloudNativePG operator with server-side apply on
@@ -125,6 +131,42 @@ both the `kind-k8s-eu` and `kind-k8s-us` clusters.
 
 Ensure that you have the latest version of the `cnpg` plugin installed on your
 local machine.
+
+### Installing the `barman-cloud` Plugin for Backup and Recovery
+
+Starting with CloudNativePG version 1.25, the `barman-cloud` plugin replaces
+the in-core Barman Cloud support in the playground for demonstrating backup and
+recovery operations. Before proceeding, ensure that
+[`cert-manager`](https://cert-manager.io/docs/installation/) is installed, as
+it is a prerequisite for the plugin.
+
+Follow the steps below to install `cert-manager`:
+
+```bash
+kubectl apply -f https://github.com/cert-manager/cert-manager/releases/download/v1.16.2/cert-manager.yaml
+```
+
+Then, verify the deployment status:
+
+```bash
+kubectl rollout status deployment -n cert-manager cert-manager
+kubectl rollout status deployment -n cert-manager cert-manager-cainjector
+kubectl rollout status deployment -n cert-manager cert-manager-webhook
+```
+
+Once `cert-manager` is successfully installed, proceed to install the
+[`barman-cloud` plugin](https://github.com/cloudnative-pg/plugin-barman-cloud)
+as follows:
+
+```bash
+kubectl apply -f https://raw.githubusercontent.com/cloudnative-pg/plugin-barman-cloud/refs/heads/main/manifest.yaml
+```
+
+Then, verify the plugin deployment status:
+
+```bash
+kubectl rollout status deployment -n cnpg-system barman-cloud
+```
 
 ## Cleaning up the Learning Environment
 
@@ -158,3 +200,23 @@ sudo sysctl fs.inotify.max_user_instances=512
 ```
 
 More information in the [relative ticket comment](https://github.com/kubernetes-sigs/kind/issues/3423#issuecomment-1872074526).
+
+## Using Rancher Desktop
+
+You may need to follow the instructions [in the Rancher Desktop
+Guide](https://docs.rancherdesktop.io/how-to-guides/increasing-open-file-limit/)
+to increase the open file limit.
+
+```
+provision:
+- mode: system
+  script: |
+    #!/bin/sh
+    cat <<'EOF' > /etc/security/limits.d/rancher-desktop.conf
+    * soft     nofile         82920
+    * hard     nofile         82920
+    EOF
+    sysctl -w vm.max_map_count=262144
+    sysctl fs.inotify.max_user_watches=524288
+    sysctl fs.inotify.max_user_instances=512
+```
