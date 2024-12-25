@@ -134,10 +134,11 @@ local machine.
 
 ### Installing the `barman-cloud` Plugin for Backup and Recovery
 
-Starting with CloudNativePG version 1.25, the `barman-cloud` plugin is used in
-the playground to demonstrate backup and recovery operations. Before
-proceeding, ensure that [`cert-manager` is installed](https://cert-manager.io/docs/installation/),
-as it is required for the plugin.
+Starting with CloudNativePG version 1.25, the `barman-cloud` plugin replaces
+the in-core Barman Cloud support in the playground for demonstrating backup and
+recovery operations. Before proceeding, ensure that
+[`cert-manager`](https://cert-manager.io/docs/installation/) is installed, as
+it is a prerequisite for the plugin.
 
 Follow the steps below to install `cert-manager`:
 
