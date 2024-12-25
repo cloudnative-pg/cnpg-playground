@@ -93,19 +93,19 @@ output similar to:
 
 ```console
 NAME                   STATUS   ROLES           AGE     VERSION
-k8s-eu-control-plane   Ready    control-plane   10m     v1.31.0
-k8s-eu-worker          Ready    infra           9m58s   v1.31.0
-k8s-eu-worker2         Ready    app             9m58s   v1.31.0
-k8s-eu-worker3         Ready    postgres        9m58s   v1.31.0
-k8s-eu-worker4         Ready    postgres        9m58s   v1.31.0
-k8s-eu-worker5         Ready    postgres        9m58s   v1.31.0
+k8s-eu-control-plane   Ready    control-plane   10m     v1.32.0
+k8s-eu-worker          Ready    infra           9m58s   v1.32.0
+k8s-eu-worker2         Ready    app             9m58s   v1.32.0
+k8s-eu-worker3         Ready    postgres        9m58s   v1.32.0
+k8s-eu-worker4         Ready    postgres        9m58s   v1.32.0
+k8s-eu-worker5         Ready    postgres        9m58s   v1.32.0
 ```
 
 In this example:
 - The control plane node (`k8s-eu-control-plane`) manages the cluster.
 - Worker nodes have different roles, such as `infra` for infrastructure, `app`
   for application workloads, and `postgres` for PostgreSQL databases. Each node
-  runs Kubernetes version `v1.31.0`.
+  runs Kubernetes version `v1.32.0`.
 
 ## Installing CloudNativePG on the Control Plane
 
