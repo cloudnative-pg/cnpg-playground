@@ -107,14 +107,14 @@ $CONTAINER_PROVIDER network connect kind minio-eu
 $CONTAINER_PROVIDER network connect kind minio-us
 
 # Create the secrets for MinIO
-for context in kind-k8s-eu kind-k8s-us; do
+for region in eu us; do
    kubectl create secret generic minio-eu \
-      --context $context \
+      --context kind-k8s-$region \
       --from-literal=ACCESS_KEY_ID="$MINIO_EU_ROOT_USER" \
       --from-literal=ACCESS_SECRET_KEY="$MINIO_EU_ROOT_PASSWORD"
 
    kubectl create secret generic minio-us \
-      --context $context \
+      --context kind-k8s-$region \
       --from-literal=ACCESS_KEY_ID="$MINIO_US_ROOT_USER" \
       --from-literal=ACCESS_SECRET_KEY="$MINIO_US_ROOT_PASSWORD"
 done

@@ -10,9 +10,9 @@ learning and experimenting with CloudNativePG using Docker and Kind.
 Ensure you have the latest available versions of the following tools installed
 on a Unix-based system:
 
-- [Docker](https://www.docker.com/)  
-- [Git](https://git-scm.com/)  
-- [Kubectl](https://kubernetes.io/docs/tasks/tools/)  
+- [Docker](https://www.docker.com/)
+- [Git](https://git-scm.com/)
+- [Kubectl](https://kubernetes.io/docs/tasks/tools/)
 - [The `cnpg` plugin for `kubectl`](https://cloudnative-pg.io/documentation/current/kubectl-plugin/)
 - [Kind](https://kind.sigs.k8s.io/)
 
@@ -113,17 +113,13 @@ To install the latest stable version of the CloudNativePG operator on the
 control plane node in both Kubernetes clusters, run the following commands:
 
 ```bash
-kubectl cnpg install generate --control-plane | \
-  kubectl --context kind-k8s-eu apply -f - --server-side
+for region in eu us; do
+   kubectl cnpg install generate --control-plane | \
+      kubectl --context kind-k8s-${region} apply -f - --server-side
 
-kubectl --context kind-k8s-eu rollout status deployment \
-  -n cnpg-system cnpg-controller-manager
-
-kubectl cnpg install generate --control-plane | \
-  kubectl --context kind-k8s-us apply -f - --server-side
-
-kubectl --context kind-k8s-us rollout status deployment \
-  -n cnpg-system cnpg-controller-manager
+   kubectl --context kind-k8s-${region} rollout status deployment \
+      -n cnpg-system cnpg-controller-manager
+done
 ```
 
 These commands will deploy the CloudNativePG operator with server-side apply on
@@ -132,41 +128,57 @@ both the `kind-k8s-eu` and `kind-k8s-us` clusters.
 Ensure that you have the latest version of the `cnpg` plugin installed on your
 local machine.
 
-### Installing the `barman-cloud` Plugin for Backup and Recovery
+## Installing cert-manager
+
+To demonstrate plugins, such as the `barman-cloud` plugin, you need to install
+`cert-manager`. This ensures secure communication between the operator and the
+plugin.
+
+For detailed guidance, refer to the official
+[`cert-manager` installation documentation](https://cert-manager.io/docs/installation/).
+
+Apply the following configuration to deploy the latest version of cert-manager
+in both Kubernetes clusters:
+
+```bash
+for region in eu us; do
+   kubectl apply --context kind-k8s-${region} -f \
+      https://github.com/cert-manager/cert-manager/releases/latest/download/cert-manager.yaml
+   kubectl rollout --context kind-k8s-${region} status deployment \
+      -n cert-manager cert-manager
+   kubectl rollout --context kind-k8s-${region} status deployment \
+      -n cert-manager cert-manager-cainjector
+   kubectl rollout --context kind-k8s-${region} status deployment \
+      -n cert-manager cert-manager-webhook
+done
+```
+
+These commands will install `cert-manager` in both the EU and US Kubernetes
+clusters and ensure the deployments are successfully rolled out.
+
+Here’s an improved version of your content with enhanced clarity and formatting:
+
+## Installing the `barman-cloud` Plugin for Backup and Recovery
 
 Starting with CloudNativePG version 1.25, the `barman-cloud` plugin replaces
 the in-core Barman Cloud support in the playground for demonstrating backup and
-recovery operations. Before proceeding, ensure that
-[`cert-manager`](https://cert-manager.io/docs/installation/) is installed, as
-it is a prerequisite for the plugin.
+recovery operations. Before proceeding, ensure that `cert-manager` is deployed
+and functioning correctly.
 
-Follow the steps below to install `cert-manager`:
-
-```bash
-kubectl apply -f https://github.com/cert-manager/cert-manager/releases/download/v1.16.2/cert-manager.yaml
-```
-
-Then, verify the deployment status:
+After verifying that `cert-manager` is installed, follow these steps to install
+the [`barman-cloud` plugin](https://github.com/cloudnative-pg/plugin-barman-cloud):
 
 ```bash
-kubectl rollout status deployment -n cert-manager cert-manager
-kubectl rollout status deployment -n cert-manager cert-manager-cainjector
-kubectl rollout status deployment -n cert-manager cert-manager-webhook
+for region in eu us; do
+   kubectl apply --context kind-k8s-${region} -f \
+      https://github.com/cloudnative-pg/plugin-barman-cloud/releases/latest/download/manifest.yaml
+   kubectl rollout --context kind-k8s-${region} status deployment \
+      -n cnpg-system barman-cloud
+done
 ```
 
-Once `cert-manager` is successfully installed, proceed to install the
-[`barman-cloud` plugin](https://github.com/cloudnative-pg/plugin-barman-cloud)
-as follows:
-
-```bash
-kubectl apply -f https://raw.githubusercontent.com/cloudnative-pg/plugin-barman-cloud/refs/heads/main/manifest.yaml
-```
-
-Then, verify the plugin deployment status:
-
-```bash
-kubectl rollout status deployment -n cnpg-system barman-cloud
-```
+These commands will install the `barman-cloud` plugin in both the EU and US
+Kubernetes clusters, ensuring readiness for backup and recovery operations.
 
 ## Cleaning up the Learning Environment
 
