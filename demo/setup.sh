@@ -80,7 +80,7 @@ for region in eu us; do
 
    # Wait for the cluster to be ready
    kubectl wait --context kind-k8s-${region} \
-     --timeout 5m \
+     --timeout 10m \
      --for=condition=Ready cluster/pg-${region}
 
 done
