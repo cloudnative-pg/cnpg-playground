@@ -54,3 +54,6 @@ objects using:
 
 This enables you to recreate the demonstration database without reinstalling
 the CNPG Playground.
+
+For a detailed understanding of the teardown process, refer to the
+[`teardown.sh` script](teardown.sh).
