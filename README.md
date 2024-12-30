@@ -150,6 +150,7 @@ for region in eu us; do
       -n cert-manager cert-manager-cainjector
    kubectl rollout --context kind-k8s-${region} status deployment \
       -n cert-manager cert-manager-webhook
+   cmctl check api --context kind-k8s-${region} --wait=2m
 done
 ```
 
