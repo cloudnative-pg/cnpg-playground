@@ -107,10 +107,29 @@ In this example:
   for application workloads, and `postgres` for PostgreSQL databases. Each node
   runs Kubernetes version `v1.32.0`.
 
+## Demonstration with CNPG Playground
+
+The **CNPG Playground** provides an excellent environment for demonstrating the
+**CloudNativePG operator** and the broader concept of running PostgreSQL on
+Kubernetes. You can easily create your own scenarios and customized demo
+environments.
+
+To get you started, we’ve designed a demo scenario that highlights the
+**distributed topology** feature. This scenario walks you through setting up a
+**PostgreSQL cluster distributed across two distinct regions** within the
+playground.
+
+For detailed instructions and resources, visit the
+[demo folder](./demo/README.md).
+
 ## Installing CloudNativePG on the Control Plane
 
+If you plan to use the CNPG Playground without the demo mentioned earlier,
+you’ll need to install CloudNativePG manually.
+
 To install the latest stable version of the CloudNativePG operator on the
-control plane node in both Kubernetes clusters, run the following commands:
+control plane nodes in both Kubernetes clusters, execute the following
+commands:
 
 ```bash
 for region in eu us; do
@@ -127,59 +146,6 @@ both the `kind-k8s-eu` and `kind-k8s-us` clusters.
 
 Ensure that you have the latest version of the `cnpg` plugin installed on your
 local machine.
-
-## Installing cert-manager
-
-To demonstrate plugins, such as the `barman-cloud` plugin, you need to install
-`cert-manager`. This ensures secure communication between the operator and the
-plugin.
-
-For detailed guidance, refer to the official
-[`cert-manager` installation documentation](https://cert-manager.io/docs/installation/).
-
-Apply the following configuration to deploy the latest version of cert-manager
-in both Kubernetes clusters:
-
-```bash
-for region in eu us; do
-   kubectl apply --context kind-k8s-${region} -f \
-      https://github.com/cert-manager/cert-manager/releases/latest/download/cert-manager.yaml
-   kubectl rollout --context kind-k8s-${region} status deployment \
-      -n cert-manager cert-manager
-   kubectl rollout --context kind-k8s-${region} status deployment \
-      -n cert-manager cert-manager-cainjector
-   kubectl rollout --context kind-k8s-${region} status deployment \
-      -n cert-manager cert-manager-webhook
-   cmctl check api --context kind-k8s-${region} --wait=2m
-done
-```
-
-These commands will install `cert-manager` in both the EU and US Kubernetes
-clusters and ensure the deployments are successfully rolled out.
-
-Here’s an improved version of your content with enhanced clarity and formatting:
-
-## Installing the `barman-cloud` Plugin for Backup and Recovery
-
-Starting with CloudNativePG version 1.25, the `barman-cloud` plugin replaces
-the in-core Barman Cloud support in the playground for demonstrating backup and
-recovery operations. Before proceeding, ensure that `cert-manager` is deployed
-and functioning correctly.
-
-After verifying that `cert-manager` is installed, follow these steps to install
-the [`barman-cloud` plugin](https://github.com/cloudnative-pg/plugin-barman-cloud):
-
-```bash
-for region in eu us; do
-   kubectl apply --context kind-k8s-${region} -f \
-      https://github.com/cloudnative-pg/plugin-barman-cloud/releases/latest/download/manifest.yaml
-   kubectl rollout --context kind-k8s-${region} status deployment \
-      -n cnpg-system barman-cloud
-done
-```
-
-These commands will install the `barman-cloud` plugin in both the EU and US
-Kubernetes clusters, ensuring readiness for backup and recovery operations.
 
 ## Cleaning up the Learning Environment
 
