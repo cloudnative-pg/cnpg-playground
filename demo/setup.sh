@@ -30,7 +30,7 @@ kube_config_path=${git_repo_root}/k8s/kube-config.yaml
 demo_yaml_path=${git_repo_root}/demo/yaml
 
 # Ensure prerequisites are met
-prereqs="kubectl cmctl"
+prereqs="kubectl kubectl-cnpg cmctl"
 for cmd in $prereqs; do
    if [ -z "$(which $cmd)" ]; then
       echo "Missing command $cmd"
@@ -59,25 +59,12 @@ for region in eu us; do
 
    # Wait for cert-manager deployment to complete
    kubectl rollout --context kind-k8s-${region} status deployment \
-      -n cert-manager cert-manager
-   kubectl rollout --context kind-k8s-${region} status deployment \
-      -n cert-manager cert-manager-cainjector
-   kubectl rollout --context kind-k8s-${region} status deployment \
-      -n cert-manager cert-manager-webhook
-
-   kubectl wait --context kind-k8s-${region} \
-     -n cert-manager deployment/cert-manager-webhook \
-     --for condition=Available
-
+      -n cert-manager
    cmctl check api --wait=2m --context kind-k8s-${region}
 
    # Deploy Barman Cloud Plugin
    kubectl apply --context kind-k8s-${region} -f \
       https://github.com/cloudnative-pg/plugin-barman-cloud/releases/latest/download/manifest.yaml
-
-   # Wait for secret to be created
-   kubectl wait --context kind-k8s-${region} --for create \
-      secret/barman-cloud-server-tls -n cnpg-system
 
    # Wait for Barman Cloud Plugin deployment to complete
    kubectl rollout --context kind-k8s-${region} status deployment \
