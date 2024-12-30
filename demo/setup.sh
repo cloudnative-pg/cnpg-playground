@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 #
-# This script deploys CloudNativePG in two regions and sets up a PostgreSQL 
-# example cluster using a distributed topology. The configuration leverages 
+# This script deploys CloudNativePG in two regions and sets up a PostgreSQL
+# example cluster using a distributed topology. The configuration leverages
 # state synchronization with S3 object storage.
 #
 # Note: This environment is for learning purposes only and should not be used
@@ -77,7 +77,7 @@ for region in eu us; do
 
    # Wait for secret to be created
    kubectl wait --context kind-k8s-${region} --for create \
-      secret/barman-cloud-server-tls -n cnpg-system 
+      secret/barman-cloud-server-tls -n cnpg-system
 
    # Wait for Barman Cloud Plugin deployment to complete
    kubectl rollout --context kind-k8s-${region} status deployment \
