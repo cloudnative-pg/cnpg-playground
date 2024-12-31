@@ -15,42 +15,45 @@
 # limitations under the License.
 #
 
-set -eu
+set -xeu
 
 git_repo_root=$(git rev-parse --show-toplevel)
 kube_config_path=${git_repo_root}/k8s/kube-config.yaml
 export KUBECONFIG=${kube_config_path}
 
 # Deploy the Prometheus operator in both Kubernetes clusters
-for context in kind-k8s-eu kind-k8s-us; do
-    kubectl --context $context create ns prometheus-operator | true
+for region in eu us; do
+    kubectl --context kind-k8s-${region} create ns prometheus-operator | true
     kubectl kustomize ${git_repo_root}/k8s/monitoring/prometheus-operator | \
-    kubectl --context $context apply --force-conflicts --server-side=true -f -
+    kubectl --context kind-k8s-${region} apply --force-conflicts --server-side -f -
 done
 
 
 # We make sure that monitoring workloads are deployed in the infrastructure node.
-for context in kind-k8s-eu kind-k8s-us; do
+for context in eu us; do
     kubectl kustomize ${git_repo_root}/k8s/monitoring/prometheus-instance | \
-        kubectl --context=$context apply --force-conflicts --server-side=true -f -
-    kubectl --context=$context -n prometheus-operator \
-            patch deployment prometheus-operator \
-            --type='merge' --patch='{"spec":{"template":{"spec":{"tolerations":[{"key":"node-role.kubernetes.io/infra","operator":"Exists","effect":"NoSchedule"}],"nodeSelector":{"node-role.kubernetes.io/infra":""}}}}}'
+        kubectl --context=kind-k8s-${region} apply --force-conflicts --server-side -f -
+    kubectl --context=kind-k8s-${region} -n prometheus-operator \
+      patch deployment prometheus-operator \
+      --type='merge' \
+      --patch='{"spec":{"template":{"spec":{"tolerations":[{"key":"node-role.kubernetes.io/infra","operator":"Exists","effect":"NoSchedule"}],"nodeSelector":{"node-role.kubernetes.io/infra":""}}}}}'
 done
 
 
 # Deploying Grafana operator
-for context in kind-k8s-eu kind-k8s-us; do
-    kubectl --context $context apply --force-conflicts --server-side=true -f https://github.com/grafana/grafana-operator/releases/latest/download/kustomize-cluster_scoped.yaml
-    kubectl --context=$context -n grafana \
-            patch deployment grafana-operator-controller-manager \
-            --type='merge' --patch='{"spec":{"template":{"spec":{"tolerations":[{"key":"node-role.kubernetes.io/infra","operator":"Exists","effect":"NoSchedule"}],"nodeSelector":{"node-role.kubernetes.io/infra":""}}}}}'
+for context in eu us; do
+    kubectl --context kind-k8s-${region} apply --force-conflicts --server-side \
+      -f https://github.com/grafana/grafana-operator/releases/latest/download/kustomize-cluster_scoped.yaml
+    kubectl --context kind-k8s-${region} -n grafana \
+      patch deployment grafana-operator-controller-manager \
+      --type='merge' \
+      --patch='{"spec":{"template":{"spec":{"tolerations":[{"key":"node-role.kubernetes.io/infra","operator":"Exists","effect":"NoSchedule"}],"nodeSelector":{"node-role.kubernetes.io/infra":""}}}}}'
 done
 
 # Creating Grafana instance and dashboards
-for context in kind-k8s-eu kind-k8s-us; do
+for context in eu us; do
     kubectl kustomize ${git_repo_root}/k8s/monitoring/grafana/ | \
-    kubectl --context $context apply -f -
+      kubectl --context kind-k8s-${region} apply -f -
 done
 
 # Restart the operator

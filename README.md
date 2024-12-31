@@ -162,8 +162,10 @@ necessary ports locally. For example, use the following commands to forward
 ports for the EU and US environments:
 
 ```bash
-kubectl --context=kind-k8s-eu port-forward -n grafana service/grafana-service 3000:3000
-kubectl --context=kind-k8s-us port-forward -n grafana service/grafana-service 3001:3000
+kubectl --context=kind-k8s-eu port-forward -n grafana \
+  service/grafana-service 3000:3000
+kubectl --context=kind-k8s-us port-forward -n grafana \
+  service/grafana-service 3001:3000
 ```
 
 This will make Grafana accessible on your local machine at
