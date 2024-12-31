@@ -31,7 +31,7 @@ demo_yaml_path=${git_repo_root}/demo/yaml
 cd "${git_repo_root}"
 export KUBECONFIG=${kube_config_path}
 
-# Begin deployment, one region at a time
+# Delete deployment, one region at a time
 for region in eu us; do
 
    # Delete the Postgres cluster
