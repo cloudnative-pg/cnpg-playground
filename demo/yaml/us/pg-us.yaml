@@ -82,6 +82,9 @@ spec:
       parameters:
         barmanObjectName: minio-us
         serverName: pg-us
+
+  monitoring:
+    enablePodMonitor: true
 ---
 # See https://cloudnative-pg.io/documentation/current/backup/#scheduled-backups
 apiVersion: postgresql.cnpg.io/v1
