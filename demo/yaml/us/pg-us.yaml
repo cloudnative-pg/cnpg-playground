@@ -51,20 +51,6 @@ spec:
       barmanObjectName: minio-us
       serverName: pg-us
 
-  backup:
-    barmanObjectStore:
-      destinationPath: s3://backups/
-      endpointURL: http://minio-us:9000
-      s3Credentials:
-        accessKeyId:
-          name: minio-us
-          key: ACCESS_KEY_ID
-        secretAccessKey:
-          name: minio-us
-          key: ACCESS_SECRET_KEY
-      wal:
-        compression: gzip
-
   # See https://cloudnative-pg.io/documentation/current/replica_cluster/#distributed-topology
   replica:
     self: pg-us

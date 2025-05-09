@@ -65,8 +65,10 @@ for region in eu us; do
    cmctl check api --wait=2m --context kind-k8s-${region}
 
    # Deploy Barman Cloud Plugin
+   #kubectl apply --context kind-k8s-${region} -f \
+   #   https://github.com/cloudnative-pg/plugin-barman-cloud/releases/latest/download/manifest.yaml
    kubectl apply --context kind-k8s-${region} -f \
-      https://github.com/cloudnative-pg/plugin-barman-cloud/releases/latest/download/manifest.yaml
+      https://raw.githubusercontent.com/cloudnative-pg/plugin-barman-cloud/refs/heads/main/manifest.yaml
 
    # Wait for Barman Cloud Plugin deployment to complete
    kubectl rollout --context kind-k8s-${region} status deployment \
