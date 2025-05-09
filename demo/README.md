@@ -4,7 +4,8 @@ This guide provides step-by-step instructions for setting up a PostgreSQL
 database across two regions in the playground, using the
 [CloudNativePG distributed topology feature](https://cloudnative-pg.io/documentation/current/replica_cluster/#distributed-topology).
 Object stores are employed to synchronise the primary cluster with the
-secondary (Disaster Recovery) cluster.
+secondary (Disaster Recovery) cluster through the
+[Barman Cloud Plugin](https://cloudnative-pg.io/plugin-barman-cloud/).
 
 ## Architecture
 
@@ -36,9 +37,10 @@ the two regions using:
 ./demo/setup.sh
 ```
 
-This process takes a few minutes to complete. It installs the latest version of
-CloudNativePG, cert-manager, and the Barman Cloud plugin, followed by the
-deployment of the two PostgreSQL clusters.
+This process takes a few minutes to complete.
+It installs the latest snapshot version of CloudNativePG, cert-manager, and the
+[Barman Cloud plugin](https://cloudnative-pg.io/plugin-barman-cloud/),
+followed by the deployment of the two PostgreSQL clusters.
 
 For a detailed understanding of the deployment process, refer to the
 [`setup.sh` script](setup.sh).

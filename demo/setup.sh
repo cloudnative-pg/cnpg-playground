@@ -46,7 +46,9 @@ export KUBECONFIG=${kube_config_path}
 for region in eu us; do
 
    # Deploy CloudNativePG operator (latest version, through the plugin)
-   kubectl cnpg install generate --control-plane | \
+   #kubectl cnpg install generate --control-plane | \
+   curl -sSfL \
+     https://raw.githubusercontent.com/cloudnative-pg/artifacts/main/manifests/operator-manifest.yaml | \
      kubectl --context kind-k8s-${region} apply -f - --server-side
 
    # Wait for CNPG deployment to complete

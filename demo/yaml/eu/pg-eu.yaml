@@ -4,6 +4,7 @@ metadata:
   name: pg-eu
 spec:
   instances: 3
+  imageName: ghcr.io/cloudnative-pg/postgresql:17-minimal-bookworm
 
   storage:
     size: 1Gi
@@ -45,6 +46,7 @@ spec:
 
   plugins:
   - name: barman-cloud.cloudnative-pg.io
+    isWALArchiver: true
     parameters:
       barmanObjectName: minio-eu
       serverName: pg-eu
