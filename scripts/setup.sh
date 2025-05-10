@@ -32,7 +32,7 @@
 set -eu
 
 # MinIO settings and credentials
-MINIO_IMAGE="${MINIO_IMAGE:-quay.io/minio/minio:RELEASE.2024-09-13T20-26-02Z}"
+MINIO_IMAGE="${MINIO_IMAGE:-quay.io/minio/minio:RELEASE.2025-04-22T22-12-26Z}"
 MINIO_EU_ROOT_USER="${MINIO_EU_ROOT_USER:-cnpg-eu}"
 MINIO_EU_ROOT_PASSWORD="${MINIO_EU_ROOT_PASSWORD:-postgres5432-eu}"
 MINIO_US_ROOT_USER="${MINIO_US_ROOT_USER:-cnpg-us}"

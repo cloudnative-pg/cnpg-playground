@@ -4,6 +4,7 @@ metadata:
   name: pg-us
 spec:
   instances: 3
+  imageName: ghcr.io/cloudnative-pg/postgresql:17-minimal-bookworm
 
   storage:
     size: 1Gi
@@ -45,23 +46,10 @@ spec:
 
   plugins:
   - name: barman-cloud.cloudnative-pg.io
+    isWALArchiver: true
     parameters:
       barmanObjectName: minio-us
       serverName: pg-us
-
-  backup:
-    barmanObjectStore:
-      destinationPath: s3://backups/
-      endpointURL: http://minio-us:9000
-      s3Credentials:
-        accessKeyId:
-          name: minio-us
-          key: ACCESS_KEY_ID
-        secretAccessKey:
-          name: minio-us
-          key: ACCESS_SECRET_KEY
-      wal:
-        compression: gzip
 
   # See https://cloudnative-pg.io/documentation/current/replica_cluster/#distributed-topology
   replica:

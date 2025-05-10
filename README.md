@@ -93,34 +93,36 @@ output similar to:
 
 ```console
 NAME                   STATUS   ROLES           AGE     VERSION
-k8s-eu-control-plane   Ready    control-plane   10m     v1.32.0
-k8s-eu-worker          Ready    infra           9m58s   v1.32.0
-k8s-eu-worker2         Ready    app             9m58s   v1.32.0
-k8s-eu-worker3         Ready    postgres        9m58s   v1.32.0
-k8s-eu-worker4         Ready    postgres        9m58s   v1.32.0
-k8s-eu-worker5         Ready    postgres        9m58s   v1.32.0
+k8s-eu-control-plane   Ready    control-plane   10m     v1.33.0
+k8s-eu-worker          Ready    infra           9m58s   v1.33.0
+k8s-eu-worker2         Ready    app             9m58s   v1.33.0
+k8s-eu-worker3         Ready    postgres        9m58s   v1.33.0
+k8s-eu-worker4         Ready    postgres        9m58s   v1.33.0
+k8s-eu-worker5         Ready    postgres        9m58s   v1.33.0
 ```
 
 In this example:
 - The control plane node (`k8s-eu-control-plane`) manages the cluster.
 - Worker nodes have different roles, such as `infra` for infrastructure, `app`
   for application workloads, and `postgres` for PostgreSQL databases. Each node
-  runs Kubernetes version `v1.32.0`.
+  runs Kubernetes version `v1.33.0`.
 
 ## Demonstration with CNPG Playground
 
-The **CNPG Playground** provides an excellent environment for demonstrating the
+The **CNPG Playground** offers a great environment for exploring the
 **CloudNativePG operator** and the broader concept of running PostgreSQL on
-Kubernetes. You can easily create your own scenarios and customized demo
-environments.
+Kubernetes.
+It allows you to create custom scenarios and demo environments with ease.
 
-To get you started, we’ve designed a demo scenario that highlights the
-**distributed topology** feature. This scenario walks you through setting up a
-**PostgreSQL cluster distributed across two distinct regions** within the
-playground.
+To help you get started, we've included a demo scenario that showcases the
+[**distributed topology** feature](https://cloudnative-pg.io/documentation/current/replica_cluster/).
+This walkthrough guides you through deploying a **PostgreSQL cluster
+distributed across two regions** within the playground. The symmetric
+architecture also includes **continuous backup** using the
+[Barman Cloud Plugin](https://cloudnative-pg.io/plugin-barman-cloud/).
 
-For detailed instructions and resources, visit the
-[demo folder](./demo/README.md).
+For complete instructions and supporting resources, refer to the [demo
+folder](./demo/README.md).
 
 ## Installing CloudNativePG on the Control Plane
 
