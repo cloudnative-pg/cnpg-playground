@@ -4,6 +4,7 @@ metadata:
   name: pg-us
 spec:
   instances: 3
+  imageName: ghcr.io/cloudnative-pg/postgresql:17-bookworm
 
   storage:
     size: 1Gi
