@@ -1,10 +1,9 @@
 apiVersion: postgresql.cnpg.io/v1
 kind: Cluster
 metadata:
-  name: pg-eu
+  name: pg-us
 spec:
   instances: 3
-  imageName: ghcr.io/cloudnative-pg/postgresql:17-standard-bookworm
 
   storage:
     size: 1Gi
@@ -25,10 +24,10 @@ spec:
     topologyKey: kubernetes.io/hostname
     podAntiAffinityType: required
 
-  # See https://cloudnative-pg.io/documentation/current/bootstrap/#bootstrap-an-empty-cluster-initdb
+  # See https://cloudnative-pg.io/documentation/current/recovery/
   bootstrap:
-    initdb:
-      dataChecksums: true
+    recovery:
+      source: pg-eu
 
   postgresql:
     # See https://cloudnative-pg.io/documentation/current/postgresql_conf/#the-postgresql-section
@@ -44,44 +43,64 @@ spec:
       shared_memory_type: 'sysv'
       dynamic_shared_memory_type: 'sysv'
 
-  plugins:
-  - name: barman-cloud.cloudnative-pg.io
-    isWALArchiver: true
-    parameters:
-      barmanObjectName: minio-eu
-      serverName: pg-eu
+  backup:
+    barmanObjectStore:
+      destinationPath: s3://backups/
+      endpointURL: http://minio-us:9000
+      s3Credentials:
+        accessKeyId:
+          name: minio-us
+          key: ACCESS_KEY_ID
+        secretAccessKey:
+          name: minio-us
+          key: ACCESS_SECRET_KEY
+      wal:
+        compression: gzip
 
   # See https://cloudnative-pg.io/documentation/current/replica_cluster/#distributed-topology
   replica:
-    self: pg-eu
+    self: pg-us
     primary: pg-eu
-    source: pg-us
+    source: pg-eu
 
   externalClusters:
   - name: pg-eu
-    plugin:
-      name: barman-cloud.cloudnative-pg.io
-      parameters:
-        barmanObjectName: minio-eu
-        serverName: pg-eu
+    barmanObjectStore:
+      serverName: pg-eu
+      destinationPath: s3://backups/
+      endpointURL: http://minio-eu:9000
+      s3Credentials:
+        accessKeyId:
+          name: minio-eu
+          key: ACCESS_KEY_ID
+        secretAccessKey:
+          name: minio-eu
+          key: ACCESS_SECRET_KEY
+      wal:
+        compression: gzip
   - name: pg-us
-    plugin:
-      name: barman-cloud.cloudnative-pg.io
-      parameters:
-        barmanObjectName: minio-us
-        serverName: pg-us
+    barmanObjectStore:
+      serverName: pg-us
+      destinationPath: s3://backups/
+      endpointURL: http://minio-us:9000
+      s3Credentials:
+        accessKeyId:
+          name: minio-us
+          key: ACCESS_KEY_ID
+        secretAccessKey:
+          name: minio-us
+          key: ACCESS_SECRET_KEY
+      wal:
+        compression: gzip
 ---
 # See https://cloudnative-pg.io/documentation/current/backup/#scheduled-backups
 apiVersion: postgresql.cnpg.io/v1
 kind: ScheduledBackup
 metadata:
-  name: pg-eu-backup
+  name: pg-us-backup
 spec:
-  method: plugin
   schedule: '0 0 0 * * *'
   backupOwnerReference: self
   cluster:
-    name: pg-eu
-  pluginConfiguration:
-    name: barman-cloud.cloudnative-pg.io
+    name: pg-us
   immediate: true
