@@ -42,6 +42,13 @@ It installs the latest snapshot version of CloudNativePG, cert-manager, and the
 [Barman Cloud plugin](https://cloudnative-pg.io/plugin-barman-cloud/),
 followed by the deployment of the two PostgreSQL clusters.
 
+If you prefer to deploy a version of the clusters that uses the legacy in-tree
+Barman Cloud code instead of the Barman Cloud Plugin, simply run:
+
+```sh
+LEGACY=true ./demo/setup.sh
+```
+
 For a detailed understanding of the deployment process, refer to the
 [`setup.sh` script](setup.sh).
 
