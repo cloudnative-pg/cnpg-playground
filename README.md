@@ -162,6 +162,37 @@ associated resources:
 This will safely destroy all running containers and return your environment to
 its initial state.
 
+## Single Kubernetes Cluster Setup
+
+In some situations, you may prefer to have a single Kubernetes cluster
+playground without the object store. To create such a cluster, run the
+following command:
+
+```sh
+kind create cluster --config k8s/kind-cluster.yaml
+```
+
+Then, run:
+
+```sh
+kubectl label node -l postgres.node.kubernetes.io node-role.kubernetes.io/postgres=
+kubectl label node -l infra.node.kubernetes.io node-role.kubernetes.io/infra=
+kubectl label node -l app.node.kubernetes.io node-role.kubernetes.io/app=
+```
+
+The result is the following:
+
+```console
+$ kubectl get nodes
+NAME                 STATUS   ROLES           AGE   VERSION
+cnpg-control-plane   Ready    control-plane   22m   v1.33.0
+cnpg-worker          Ready    infra           22m   v1.33.0
+cnpg-worker2         Ready    app             22m   v1.33.0
+cnpg-worker3         Ready    postgres        22m   v1.33.0
+cnpg-worker4         Ready    postgres        22m   v1.33.0
+cnpg-worker5         Ready    postgres        22m   v1.33.0
+```
+
 ## Nix Flakes
 
 Do you use Nix flakes? If you do, this package have a configured
