@@ -31,6 +31,40 @@
 
 set -eu
 
+# Minimal thresholds to check before calling tuning script
+declare -A thresholds=(
+  [fs.inotify.max_user_watches]=20000
+  [fs.inotify.max_user_instances]=1000
+  [kernel.keys.maxkeys]=1000
+  [kernel.keys.maxbytes]=250000
+)
+
+needs_update=0
+
+# Check current sysctl values
+for key in "${!thresholds[@]}"; do
+  path="/proc/sys/$(echo "$key" | tr '.' '/')"
+  if [[ -f "$path" ]]; then
+    current=$(cat "$path")
+    if (( current < thresholds[$key] )); then
+      echo "Current $key ($current) is below threshold (${thresholds[$key]})"
+      needs_update=1
+    fi
+  else
+    echo "Warning: sysctl key $key not found at $path"
+  fi
+done
+
+# Run the tuning script if needed
+if (( needs_update )); then
+  echo "Running tuning script to update sysctl settings..."
+  "${BASH_SOURCE%/*}/tune-sysctl.sh"
+  ret=$?
+  if (( ret != 0 )); then
+    echo "$(basename "$0"): Tuning script exited without applying changes."
+  fi
+fi
+
 # MinIO settings and credentials
 MINIO_IMAGE="${MINIO_IMAGE:-quay.io/minio/minio:RELEASE.2025-04-22T22-12-26Z}"
 MINIO_EU_ROOT_USER="${MINIO_EU_ROOT_USER:-cnpg-eu}"
