@@ -31,6 +31,39 @@
 
 set -eu
 
+# Format: "recommended:minimum"
+declare -A limits=(
+  [fs.inotify.max_user_watches]="655360:20000"
+  [fs.inotify.max_user_instances]="1280:1000"
+  [kernel.keys.maxkeys]="20000:1000"
+  [kernel.keys.maxbytes]="500000:250000"
+)
+
+declare -a updates=()
+
+for key in "${!limits[@]}"; do
+  current=$(< /proc/sys/$(tr . / <<< "$key"))
+  recommended="${limits[$key]%%:*}"
+  minimum="${limits[$key]##*:}"
+  (( current < minimum )) && updates+=("$key=$recommended")
+done
+
+if (( ${#updates[@]} > 0 )); then
+  echo -e "\nSome kernel parameters are below recommended levels for running a CloudNativePG Kind cluster."
+  echo -e "The following temporary (non-persistent) updates are suggested:\n"
+  echo -e "  sudo sysctl -w ${updates[*]}\n"
+
+  read -rp "Apply this command? (Y/n): " confirm
+  confirm=${confirm:-Y}
+
+  if [[ "$confirm" =~ ^[Yy]$ ]]; then
+    sudo sysctl -w "${updates[@]}"
+    echo -e "\nKernel parameters updated temporarily for CloudNativePG Kind cluster to run properly."
+  else
+    echo -e "\n\033[0;31m⚠️  Kernel parameters not updated. CloudNativePG Kind cluster may fail to start or run correctly.\033[0m"
+  fi
+fi
+
 # MinIO settings and credentials
 MINIO_IMAGE="${MINIO_IMAGE:-quay.io/minio/minio:RELEASE.2025-04-22T22-12-26Z}"
 MINIO_EU_ROOT_USER="${MINIO_EU_ROOT_USER:-cnpg-eu}"
