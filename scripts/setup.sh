@@ -77,6 +77,8 @@ $CONTAINER_PROVIDER run \
    -e "MINIO_ROOT_USER=$MINIO_EU_ROOT_USER" \
    -e "MINIO_ROOT_PASSWORD=$MINIO_EU_ROOT_PASSWORD" \
    -u $(id -u):$(id -g) \
+   -p 19001:9001 \
+   --restart always \
    ${MINIO_IMAGE} server /data --console-address ":9001"
 
 mkdir -p minio-us
@@ -87,6 +89,8 @@ $CONTAINER_PROVIDER run \
    -e "MINIO_ROOT_USER=$MINIO_US_ROOT_USER" \
    -e "MINIO_ROOT_PASSWORD=$MINIO_US_ROOT_PASSWORD" \
    -u $(id -u):$(id -g) \
+   -p 29001:9001 \
+   --restart always \
    ${MINIO_IMAGE} server /data --console-address ":9001"
 
 # Setup the EU Kind Cluster
