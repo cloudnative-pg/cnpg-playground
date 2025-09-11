@@ -18,6 +18,14 @@
         alias k=kubectl
         complete -o default -F __start_kubectl k
 
+        # setup 'c/n' as 'kubectx/kubens' aliases
+        source /nix/store/*-kubectx-*/share/bash-completion/completions/kubectx.bash
+        alias c=kubectx
+        complete -F _kube_contexts c
+        source /nix/store/*-kubectx-*/share/bash-completion/completions/kubens.bash
+        alias n=kubens
+        complete -F _kube_namespaces n
+
         # Setup 'kc' as a 'kubectl cnpg' alias
         source <(kubectl cnpg completion bash)
         alias kc="kubectl cnpg"
@@ -26,12 +34,14 @@
 
       packages = [
         pkgs.kubectl
+        pkgs.kubectx
         pkgs.kubernetes-helm
         pkgs.kind
         pkgs.jq
         pkgs.curl
         pkgs.kubectl-cnpg
         pkgs.kubectl-view-secret
+        pkgs.stern
         pkgs.cmctl
         pkgs.k9s
         pkgs.lazydocker
