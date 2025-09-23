@@ -34,6 +34,23 @@ source "$(dirname "$0")/common.sh"
 
 echo "✅ Prerequisites met. Using '$CONTAINER_PROVIDER' as the container provider."
 
+# --- Pre-flight Check ---
+echo "🔎 Verifying that no existing playground clusters are running..."
+# The '|| true' prevents the script from exiting if grep finds no matches.
+existing_count=$(kind get clusters | grep -c "^${K8S_BASE_NAME}-" || true)
+
+if [ "${existing_count}" -gt 0 ]; then
+    echo "❌ Error: Found ${existing_count} existing playground cluster(s)."
+    echo "Please run './scripts/teardown.sh' to remove the existing environment before running setup."
+    echo
+    echo "Found clusters:"
+    kind get clusters | grep "^${K8S_BASE_NAME}-"
+    exit 1
+fi
+
+echo "✅ No existing clusters found. Proceeding with setup."
+echo
+
 # --- Script Setup ---
 # Determine regions from arguments, or use defaults
 REGIONS=("$@")
