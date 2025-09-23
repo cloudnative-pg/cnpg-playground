@@ -38,7 +38,7 @@ the two regions using:
 ```
 
 This process takes a few minutes to complete.
-It installs the latest snapshot version of CloudNativePG, cert-manager, and the
+It installs the latest version of CloudNativePG, cert-manager, and the
 [Barman Cloud plugin](https://cloudnative-pg.io/plugin-barman-cloud/),
 followed by the deployment of the two PostgreSQL clusters.
 
@@ -47,6 +47,13 @@ Barman Cloud code instead of the Barman Cloud Plugin, simply run:
 
 ```sh
 LEGACY=true ./demo/setup.sh
+```
+
+To deploy from the latest `main` branch of both CloudNativePG and the Barman
+Cloud plugin, use:
+
+```bash
+TRUNK=true ./demo/setup.sh
 ```
 
 For a detailed understanding of the deployment process, refer to the
