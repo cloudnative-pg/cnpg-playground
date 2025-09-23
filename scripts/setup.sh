@@ -97,7 +97,7 @@ for region in "${REGIONS[@]}"; do
     $CONTAINER_PROVIDER network connect kind "${MINIO_CONTAINER_NAME}"
 
     echo "🔑 Creating MinIO secret in cluster..."
-    kubectl create secret generic "${MINIO_BASE_NAME}" \
+    kubectl create secret generic "${MINIO_CONTAINER_NAME}" \
         --context "kind-${K8S_CLUSTER_NAME}" \
         --from-literal=ACCESS_KEY_ID="$MINIO_ROOT_USER" \
         --from-literal=ACCESS_SECRET_KEY="$MINIO_ROOT_PASSWORD"
