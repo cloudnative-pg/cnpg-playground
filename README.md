@@ -133,7 +133,7 @@ In this example:
 
 ### Cleaning Up the Environment
 
-When you're finished, the `cleanup.sh` script can remove the resources. It can
+When you're finished, the `teardown.sh` script can remove the resources. It can
 be run in two ways:
 
 #### Full Cleanup
@@ -143,7 +143,7 @@ clusters and their resources, returning your system to its initial state.
 
 ```bash
 # Destroy all created regions
-./scripts/cleanup.sh
+./scripts/teardown.sh
 ```
 
 #### Selective Cleanup
@@ -152,7 +152,7 @@ You can also remove specific clusters by passing the region names as arguments.
 
 ```bash
 # Destroy only the 'it' cluster
-./scripts/cleanup.sh it
+./scripts/teardown.sh it
 ```
 
 ## Demonstration with CNPG Playground
