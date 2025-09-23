@@ -71,4 +71,7 @@ for region in "${REGIONS[@]}"; do
     echo
     echo "🔹 Nodes:"
     kubectl --context "${CONTEXT}" get nodes -o wide
+    echo
+    echo "🔹 Secrets:"
+    kubectl --context "${CONTEXT}" get secrets
 done
