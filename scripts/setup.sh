@@ -29,94 +29,66 @@
 # limitations under the License.
 #
 
-set -eu
+# Source the common setup script
+source "$(dirname "$0")/common.sh"
 
-# MinIO settings and credentials
-MINIO_IMAGE="${MINIO_IMAGE:-quay.io/minio/minio:RELEASE.2025-04-22T22-12-26Z}"
-MINIO_EU_ROOT_USER="${MINIO_EU_ROOT_USER:-cnpg-eu}"
-MINIO_EU_ROOT_PASSWORD="${MINIO_EU_ROOT_PASSWORD:-postgres5432-eu}"
-MINIO_US_ROOT_USER="${MINIO_US_ROOT_USER:-cnpg-us}"
-MINIO_US_ROOT_PASSWORD="${MINIO_US_ROOT_PASSWORD:-postgres5432-us}"
+echo "✅ Prerequisites met. Using '$CONTAINER_PROVIDER' as the container provider."
 
-# Ensure prerequisites are met
-prereqs="kind kubectl git"
-for cmd in $prereqs; do
-   if [ -z "$(which $cmd)" ]; then
-      echo "Missing command $cmd"
-      exit 1
-   fi
-done
-
-# Look for a supported container provider and use it throughout
-containerproviders="docker podman"
-for containerProvider in `which $containerproviders`; do
-    CONTAINER_PROVIDER=$containerProvider
-    break
-done
-
-# Ensure we found a supported container provider
-if [ -z ${CONTAINER_PROVIDER+x} ]; then
-    echo "Missing container provider, supported providers are $containerproviders"
-    exit 1
+# --- Script Setup ---
+# Determine regions from arguments, or use defaults
+REGIONS=("$@")
+if [ ${#REGIONS[@]} -eq 0 ]; then
+    REGIONS=("eu" "us")
 fi
 
-git_repo_root=$(git rev-parse --show-toplevel)
-kube_config_path=${git_repo_root}/k8s/kube-config.yaml
-kind_config_path=${git_repo_root}/k8s/kind-cluster.yaml
+# Setup a single, shared Kubeconfig for all clusters
+export KUBECONFIG="${KUBE_CONFIG_PATH}"
+> "${KUBE_CONFIG_PATH}" # Create or clear the kubeconfig file
+cd "${GIT_REPO_ROOT}"
+kind_config_path="${GIT_REPO_ROOT}/k8s/kind-cluster.yaml"
 
-# Setup a separate Kubeconfig
-cd "${git_repo_root}"
-export KUBECONFIG=${kube_config_path}
+# --- Main Loop for Regions ---
+let "current_minio_port = MINIO_BASE_PORT"
+declare -A minio_ports
 
-# Setup the object stores
-mkdir -p minio-eu
-$CONTAINER_PROVIDER run \
-   --name minio-eu \
-	 -d \
-   -v "${git_repo_root}/minio-eu:/data" \
-   -e "MINIO_ROOT_USER=$MINIO_EU_ROOT_USER" \
-   -e "MINIO_ROOT_PASSWORD=$MINIO_EU_ROOT_PASSWORD" \
-   -u $(id -u):$(id -g) \
-   ${MINIO_IMAGE} server /data --console-address ":9001"
+for region in "${REGIONS[@]}"; do
+    echo "--------------------------------------------------"
+    echo "🚀 Setting up region: ${region}"
+    echo "--------------------------------------------------"
 
-mkdir -p minio-us
-$CONTAINER_PROVIDER run \
-   --name minio-us \
-	 -d \
-   -v "${git_repo_root}/minio-us:/data" \
-   -e "MINIO_ROOT_USER=$MINIO_US_ROOT_USER" \
-   -e "MINIO_ROOT_PASSWORD=$MINIO_US_ROOT_PASSWORD" \
-   -u $(id -u):$(id -g) \
-   ${MINIO_IMAGE} server /data --console-address ":9001"
+    K8S_CLUSTER_NAME="${K8S_BASE_NAME}-${region}"
+    MINIO_CONTAINER_NAME="${MINIO_BASE_NAME}-${region}"
 
-# Setup the EU Kind Cluster
-kind create cluster --config ${kind_config_path} --name k8s-eu
-# The `node-role.kubernetes.io` label must be set after the node have been created
-kubectl label node -l postgres.node.kubernetes.io node-role.kubernetes.io/postgres=
-kubectl label node -l infra.node.kubernetes.io node-role.kubernetes.io/infra=
-kubectl label node -l app.node.kubernetes.io node-role.kubernetes.io/app=
+    echo "📦 Creating MinIO container '${MINIO_CONTAINER_NAME}' on host port ${current_minio_port}..."
+    mkdir -p "${GIT_REPO_ROOT}/${MINIO_CONTAINER_NAME}"
+    $CONTAINER_PROVIDER run \
+        --name "${MINIO_CONTAINER_NAME}" -d -p "${current_minio_port}:9001" \
+        -v "${GIT_REPO_ROOT}/${MINIO_CONTAINER_NAME}:/data" \
+        -e "MINIO_ROOT_USER=${MINIO_ROOT_USER}" -e "MINIO_ROOT_PASSWORD=${MINIO_ROOT_PASSWORD}" \
+        -u "$(id -u):$(id -g)" \
+        "${MINIO_IMAGE}" server /data --console-address ":9001" > /dev/null
 
-# Setup the US Kind Cluster
-kind create cluster --config ${kind_config_path} --name k8s-us
-# The `node-role.kubernetes.io` label must be set after the node have been created
-kubectl label node -l postgres.node.kubernetes.io node-role.kubernetes.io/postgres=
-kubectl label node -l infra.node.kubernetes.io node-role.kubernetes.io/infra=
-kubectl label node -l app.node.kubernetes.io node-role.kubernetes.io/app=
+    echo "🏗️  Creating Kind cluster '${K8S_CLUSTER_NAME}'..."
+    kind create cluster --config "${kind_config_path}" --name "${K8S_CLUSTER_NAME}"
 
-$CONTAINER_PROVIDER network connect kind minio-eu
-$CONTAINER_PROVIDER network connect kind minio-us
+    echo "🏷️  Labeling nodes in '${K8S_CLUSTER_NAME}'..."
+    kubectl label node -l postgres.node.kubernetes.io node-role.kubernetes.io/postgres=
+    kubectl label node -l infra.node.kubernetes.io node-role.kubernetes.io/infra=
+    kubectl label node -l app.node.kubernetes.io node-role.kubernetes.io/app=
 
-# Create the secrets for MinIO
-for region in eu us; do
-   kubectl create secret generic minio-eu \
-      --context kind-k8s-${region} \
-      --from-literal=ACCESS_KEY_ID="$MINIO_EU_ROOT_USER" \
-      --from-literal=ACCESS_SECRET_KEY="$MINIO_EU_ROOT_PASSWORD"
+    echo "🌐 Connecting MinIO to the Kind network..."
+    $CONTAINER_PROVIDER network connect kind "${MINIO_CONTAINER_NAME}"
 
-   kubectl create secret generic minio-us \
-      --context kind-k8s-${region} \
-      --from-literal=ACCESS_KEY_ID="$MINIO_US_ROOT_USER" \
-      --from-literal=ACCESS_SECRET_KEY="$MINIO_US_ROOT_PASSWORD"
+    echo "🔑 Creating MinIO secret in cluster..."
+    kubectl create secret generic "${MINIO_BASE_NAME}" \
+        --context "kind-${K8S_CLUSTER_NAME}" \
+        --from-literal=ACCESS_KEY_ID="$MINIO_ROOT_USER" \
+        --from-literal=ACCESS_SECRET_KEY="$MINIO_ROOT_PASSWORD"
+
+    echo "✅ Region '${region}' setup complete."
+    minio_ports["${region}"]="${current_minio_port}"
+    ((current_minio_port++))
 done
 
-./scripts/info.sh
+# Display information
+source "$(dirname "$0")/info.sh"

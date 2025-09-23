@@ -1,5 +1,8 @@
 #!/usr/bin/env bash
 #
+# This script tears down the CloudNativePG playground environment.
+# It auto-detects all regions if none are specified. If regions are
+# provided as arguments, it only tears down those specific regions.
 # Copyright The CloudNativePG Contributors
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -15,28 +18,66 @@
 # limitations under the License.
 #
 
-set -eu
+# Source the common setup script
+source "$(dirname "$0")/common.sh"
 
-# Look for a supported container provider and use it throughout
-containerproviders="docker podman"
-for containerProvider in `which $containerproviders`; do
-    CONTAINER_PROVIDER=$containerProvider
-    break
-done
-
-# Ensure we found a supported container provider
-if [ -z ${CONTAINER_PROVIDER+x} ]; then
-    echo "Missing container provider, supported providers are $containerproviders"
-    exit 1
+# --- Main Logic ---
+# Determine regions from arguments, or auto-detect if none are provided
+REGIONS=()
+if [ $# -gt 0 ]; then
+    REGIONS=("$@")
+    echo "🎯 Targeting specified regions for teardown: ${REGIONS[*]}"
+else
+    echo "🔎 Auto-detecting all active playground regions for teardown..."
+    # The '|| true' prevents the script from exiting if grep finds no matches.
+    REGIONS=($(kind get clusters | grep "^${K8S_BASE_NAME}-" | sed "s/^${K8S_BASE_NAME}-//" || true))
 fi
 
-git_repo_root=$(git rev-parse --show-toplevel)
-cd "${git_repo_root}"
+if [ ${#REGIONS[@]} -eq 0 ]; then
+    echo "🤷 No regions found to tear down. Exiting."
+    exit 0
+fi
 
-$CONTAINER_PROVIDER rm minio-eu -f ||:
-$CONTAINER_PROVIDER rm minio-us -f ||:
-kind delete cluster --name k8s-eu ||:
-kind delete cluster --name k8s-us ||:
-rm -fr minio-eu/* minio-eu/.minio.sys ||:
-rm -fr minio-us/* minio-us/.minio.sys ||:
-rm -f k8s/kube-config.yaml
+echo "🔥 Tearing down regions: ${REGIONS[*]}"
+
+for region in "${REGIONS[@]}"; do
+    K8S_CLUSTER_NAME="${K8S_BASE_NAME}-${region}"
+    MINIO_CONTAINER_NAME="${MINIO_BASE_NAME}-${region}"
+    CONTEXT_NAME="kind-${K8S_CLUSTER_NAME}"
+
+    echo "--------------------------------------------------"
+    echo "🔥 Tearing down region: ${region}"
+    echo "--------------------------------------------------"
+
+    # Delete Kind cluster
+    if [[ $(kind get clusters) == *"${K8S_CLUSTER_NAME}"* ]]; then
+        echo "🗑️  Deleting Kind cluster '${K8S_CLUSTER_NAME}'..."
+        kind delete cluster --name "${K8S_CLUSTER_NAME}"
+    else
+        echo "🔷 Kind cluster '${K8S_CLUSTER_NAME}' not found, skipping."
+    fi
+
+    # Stop and remove MinIO container
+    if [[ $($CONTAINER_PROVIDER ps -a --format '{{.Names}}') == *"${MINIO_CONTAINER_NAME}"* ]]; then
+        echo "🗑️  Removing MinIO container '${MINIO_CONTAINER_NAME}'..."
+        $CONTAINER_PROVIDER rm -f "${MINIO_CONTAINER_NAME}" > /dev/null
+    else
+        echo "🔷 MinIO container '${MINIO_CONTAINER_NAME}' not found, skipping."
+    fi
+
+    # Remove MinIO data directory
+    if [ -d "${GIT_REPO_ROOT}/${MINIO_CONTAINER_NAME}" ]; then
+        echo "🗑️  Removing MinIO data directory..."
+        rm -rf "${GIT_REPO_ROOT}/${MINIO_CONTAINER_NAME}"
+    fi
+
+    # Clean up kubeconfig entry for the deleted cluster
+    if [ -f "${KUBE_CONFIG_PATH}" ]; then
+        echo "🧹 Cleaning up kubeconfig entries for context '${CONTEXT_NAME}'..."
+        kubectl config delete-context "${CONTEXT_NAME}" --kubeconfig "${KUBE_CONFIG_PATH}" > /dev/null 2>&1 || true
+        kubectl config delete-cluster "${K8S_CLUSTER_NAME}" --kubeconfig "${KUBE_CONFIG_PATH}" > /dev/null 2>&1 || true
+    fi
+done
+
+echo ""
+echo "✅ Cleanup complete!"
