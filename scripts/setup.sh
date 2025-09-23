@@ -64,13 +64,13 @@ export KUBECONFIG="${KUBE_CONFIG_PATH}"
 cd "${GIT_REPO_ROOT}"
 kind_config_path="${GIT_REPO_ROOT}/k8s/kind-cluster.yaml"
 
-# --- Main Loop for Regions ---
+# --- Phase 1: Provision Clusters and MinIO Instances ---
 let "current_minio_port = MINIO_BASE_PORT"
 declare -A minio_ports
 
 for region in "${REGIONS[@]}"; do
     echo "--------------------------------------------------"
-    echo "🚀 Setting up region: ${region}"
+    echo "🚀 Provisioning resources for region: ${region}"
     echo "--------------------------------------------------"
 
     K8S_CLUSTER_NAME="${K8S_BASE_NAME}-${region}"
@@ -96,16 +96,33 @@ for region in "${REGIONS[@]}"; do
     echo "🌐 Connecting MinIO to the Kind network..."
     $CONTAINER_PROVIDER network connect kind "${MINIO_CONTAINER_NAME}"
 
-    echo "🔑 Creating MinIO secret in cluster..."
-    kubectl create secret generic "${MINIO_CONTAINER_NAME}" \
-        --context "kind-${K8S_CLUSTER_NAME}" \
-        --from-literal=ACCESS_KEY_ID="$MINIO_ROOT_USER" \
-        --from-literal=ACCESS_SECRET_KEY="$MINIO_ROOT_PASSWORD"
+    echo "✅ Resource provisioning for '${region}' complete."
 
-    echo "✅ Region '${region}' setup complete."
+    # Store details for the next phase
     minio_ports["${region}"]="${current_minio_port}"
+    all_minio_names+=("${MINIO_CONTAINER_NAME}")
     ((current_minio_port++))
 done
 
-# Display information
+# --- Phase 2: Distribute MinIO Secrets to all Clusters ---
+echo
+echo "--------------------------------------------------"
+echo "🔑 Distributing MinIO secrets to all clusters"
+echo "--------------------------------------------------"
+for target_region in "${REGIONS[@]}"; do
+    target_cluster_context="kind-${K8S_BASE_NAME}-${target_region}"
+    echo "   -> Configuring secrets in cluster: ${target_cluster_context}"
+
+    for source_minio_name in "${all_minio_names[@]}"; do
+        echo "      - Creating secret for ${source_minio_name}"
+        kubectl create secret generic "${source_minio_name}" \
+            --context "${target_cluster_context}" \
+            --from-literal=ACCESS_KEY_ID="$MINIO_ROOT_USER" \
+            --from-literal=ACCESS_SECRET_KEY="$MINIO_ROOT_PASSWORD"
+    done
+done
+
+# --- Final Instructions ---
+echo
+# Display information using the info script
 source "$(dirname "$0")/info.sh"
