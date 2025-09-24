@@ -58,28 +58,52 @@ The architecture is illustrated in the diagram below:
 
 ![Local Environment Architecture](images/cnpg-playground-architecture.png)
 
-## Setting Up the Learning Environment
+## Usage
 
-To set up the environment, simply run the following script:
+This playground environment is managed by three main scripts located in the
+`/scripts` directory.
+
+| Script       | Description                                                  |
+| :----------- | :----------------------------------------------------------- |
+| `setup.sh`   | Creates and configures the multi-region Kubernetes clusters. |
+| `info.sh`    | Displays status and access information for active clusters.  |
+| `teardown.sh`| Removes clusters and all associated resources.               |
+
+### Setting Up the Learning Environment
+
+The `setup.sh` script provisions the entire environment. By default, it creates
+two regional clusters: `eu` and `us`.
 
 ```bash
+# Create the default two-region environment (eu, us)
 ./scripts/setup.sh
 ```
 
-## Connecting to the Kubernetes Clusters
+You can easily customize this by providing your own list of region names as
+arguments.
+
+```bash
+# Create a custom environment with 'it' and 'de' regions, simulating Italy and Germany
+./scripts/setup.sh it de
+
+# Create a single-region environment
+./scripts/setup.sh local
+```
+
+### Connecting to the Kubernetes Clusters
 
 To configure and interact with both Kubernetes clusters during the learning
-process, you will need to connect to them.
+process, you will need to connect to them. After setup, you can run the
+`info.sh` script at any time to see the status of your environment.
 
-The **setup** script provides detailed instructions for accessing the clusters.
-If you need to view the connection details again after the setup, you can
-retrieve them by running:
+It automatically detects all running playground clusters and displays their
+access instructions, and node status.
 
 ```bash
 ./scripts/info.sh
 ```
 
-## Inspecting Nodes in a Kubernetes Cluster
+### Inspecting Nodes in a Kubernetes Cluster
 
 To inspect the nodes in a Kubernetes cluster, you can use the following
 command:
@@ -93,19 +117,43 @@ output similar to:
 
 ```console
 NAME                   STATUS   ROLES           AGE     VERSION
-k8s-eu-control-plane   Ready    control-plane   10m     v1.33.0
-k8s-eu-worker          Ready    infra           9m58s   v1.33.0
-k8s-eu-worker2         Ready    app             9m58s   v1.33.0
-k8s-eu-worker3         Ready    postgres        9m58s   v1.33.0
-k8s-eu-worker4         Ready    postgres        9m58s   v1.33.0
-k8s-eu-worker5         Ready    postgres        9m58s   v1.33.0
+k8s-eu-control-plane   Ready    control-plane   10m     v1.34.0
+k8s-eu-worker          Ready    infra           9m58s   v1.34.0
+k8s-eu-worker2         Ready    app             9m58s   v1.34.0
+k8s-eu-worker3         Ready    postgres        9m58s   v1.34.0
+k8s-eu-worker4         Ready    postgres        9m58s   v1.34.0
+k8s-eu-worker5         Ready    postgres        9m58s   v1.34.0
 ```
 
 In this example:
 - The control plane node (`k8s-eu-control-plane`) manages the cluster.
 - Worker nodes have different roles, such as `infra` for infrastructure, `app`
   for application workloads, and `postgres` for PostgreSQL databases. Each node
-  runs Kubernetes version `v1.33.0`.
+  runs Kubernetes version `v1.34.0`.
+
+### Cleaning Up the Environment
+
+When you're finished, the `teardown.sh` script can remove the resources. It can
+be run in two ways:
+
+#### Full Cleanup
+
+Running the script with no arguments will auto-detect and remove all playground
+clusters and their resources, returning your system to its initial state.
+
+```bash
+# Destroy all created regions
+./scripts/teardown.sh
+```
+
+#### Selective Cleanup
+
+You can also remove specific clusters by passing the region names as arguments.
+
+```bash
+# Destroy only the 'it' cluster
+./scripts/teardown.sh it
+```
 
 ## Demonstration with CNPG Playground
 
@@ -121,8 +169,8 @@ distributed across two regions** within the playground. The symmetric
 architecture also includes **continuous backup** using the
 [Barman Cloud Plugin](https://cloudnative-pg.io/plugin-barman-cloud/).
 
-For complete instructions and supporting resources, refer to the [demo
-folder](./demo/README.md).
+For complete instructions and supporting resources, refer to the
+[demo folder](./demo/README.md).
 
 ## Installing CloudNativePG on the Control Plane
 
@@ -148,50 +196,6 @@ both the `kind-k8s-eu` and `kind-k8s-us` clusters.
 
 Ensure that you have the latest version of the `cnpg` plugin installed on your
 local machine.
-
-## Cleaning up the Learning Environment
-
-When you're ready to clean up and remove all resources from the learning
-environment, run the following script to tear down the containers and
-associated resources:
-
-```bash
-./scripts/teardown.sh
-```
-
-This will safely destroy all running containers and return your environment to
-its initial state.
-
-## Single Kubernetes Cluster Setup
-
-In some situations, you may prefer to have a single Kubernetes cluster
-playground without the object store. To create such a cluster, run the
-following command:
-
-```sh
-kind create cluster --config k8s/kind-cluster.yaml
-```
-
-Then, run:
-
-```sh
-kubectl label node -l postgres.node.kubernetes.io node-role.kubernetes.io/postgres=
-kubectl label node -l infra.node.kubernetes.io node-role.kubernetes.io/infra=
-kubectl label node -l app.node.kubernetes.io node-role.kubernetes.io/app=
-```
-
-The result is the following:
-
-```console
-$ kubectl get nodes
-NAME                 STATUS   ROLES           AGE   VERSION
-cnpg-control-plane   Ready    control-plane   22m   v1.33.0
-cnpg-worker          Ready    infra           22m   v1.33.0
-cnpg-worker2         Ready    app             22m   v1.33.0
-cnpg-worker3         Ready    postgres        22m   v1.33.0
-cnpg-worker4         Ready    postgres        22m   v1.33.0
-cnpg-worker5         Ready    postgres        22m   v1.33.0
-```
 
 ## Nix Flakes
 

@@ -1,5 +1,8 @@
 #!/usr/bin/env bash
 #
+# This script automatically detects running CloudNativePG playground clusters
+# and displays their status, including version, nodes, and pods.
+#
 # Copyright The CloudNativePG Contributors
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -15,23 +18,60 @@
 # limitations under the License.
 #
 
-set -eu
+# Source the common setup script
+source "$(dirname "$0")/common.sh"
 
-git_repo_root=$(git rev-parse --show-toplevel)
-kube_config_path=${git_repo_root}/k8s/kube-config.yaml
+# --- Script Setup ---
+if [ ! -f "${KUBE_CONFIG_PATH}" ]; then
+    echo "❌ Error: Kubeconfig file not found at '${KUBE_CONFIG_PATH}'"
+    echo "Please run the setup.sh script first."
+    exit 1
+fi
+export KUBECONFIG="${KUBE_CONFIG_PATH}"
 
-cat <<EOF
-To access the playground clusters, ensure you set the following environment
-variable:
+# --- Auto-detect Regions ---
+echo "🔎 Detecting active playground clusters..."
+REGIONS=($(kind get clusters | grep "^${K8S_BASE_NAME}-" | sed "s/^${K8S_BASE_NAME}-//" || true))
 
-export KUBECONFIG=${kube_config_path}
+if [ ${#REGIONS[@]} -eq 0 ]; then
+    echo "🤷 No active playground clusters found with the prefix '${K8S_BASE_NAME}-'."
+    exit 0
+fi
+echo "✅ Found regions: ${REGIONS[*]}"
 
-To switch between clusters, use the commands below:
+# --- Access Instructions ---
+echo
+echo "--------------------------------------------------"
+echo "🕹️  Cluster Access Instructions"
+echo "--------------------------------------------------"
+echo
+echo "To access your playground clusters, first set the KUBECONFIG environment variable:"
+echo "export KUBECONFIG=${KUBE_CONFIG_PATH}"
+echo
+echo "Available cluster contexts:"
+for region in "${REGIONS[@]}"; do
+    echo "  • kind-${K8S_BASE_NAME}-${region}"
+done
+echo
+echo "To switch to a specific cluster (e.g., the '${REGIONS[0]}' region), use:"
+echo "kubectl config use-context kind-${K8S_BASE_NAME}-${REGIONS[0]}"
+echo
 
-kubectl config use-context kind-k8s-eu
-kubectl config use-context kind-k8s-us
-
-To check which cluster you’re currently connected to:
-
-kubectl config current-context
-EOF
+# --- Main Info Loop ---
+echo "--------------------------------------------------"
+echo "ℹ️  Cluster Information"
+echo "--------------------------------------------------"
+for region in "${REGIONS[@]}"; do
+    CONTEXT="kind-${K8S_BASE_NAME}-${region}"
+    echo
+    echo "🔷 Cluster: ${CONTEXT}"
+    echo "==================================="
+    echo "🔹 Version:"
+    kubectl --context "${CONTEXT}" version
+    echo
+    echo "🔹 Nodes:"
+    kubectl --context "${CONTEXT}" get nodes -o wide
+    echo
+    echo "🔹 Secrets:"
+    kubectl --context "${CONTEXT}" get secrets
+done
