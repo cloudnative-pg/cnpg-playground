@@ -197,6 +197,11 @@ both the `kind-k8s-eu` and `kind-k8s-us` clusters.
 Ensure that you have the latest version of the `cnpg` plugin installed on your
 local machine.
 
+## Contrib
+
+The [contrib](./contrib/) folder contains community‑contributed scripts that help you set up additional resources.
+Each subdirectory within contrib includes its own `README.md`, which explains the purpose, usage, and any required configuration.
+
 ## Nix Flakes
 
 Do you use Nix flakes? If you do, this package have a configured
