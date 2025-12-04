@@ -1,39 +1,68 @@
 # Monitoring
 
-If you want your clusters to be monitored by the [CloudNativePG Grafana Dashboard](https://github.com/cloudnative-pg/grafana-dashboards)
-you can add the [Prometheus](https://github.com/prometheus-operator/prometheus-operator) & [Grafana](https://github.com/grafana/grafana-operator) operators and the dashboard by running the [setup.sh](./setup.sh).
+This directory enables monitoring of your CloudNativePG clusters using the official
+[CloudNativePG Grafana Dashboard](https://github.com/cloudnative-pg/grafana-dashboards).
+The included script installs both the [Prometheus Operator](https://github.com/prometheus-operator/prometheus-operator)
+and the [Grafana Operator](https://github.com/grafana/grafana-operator),
+and deploys the dashboard on top of your existing playground environment.
+
+---
 
 ## Setup
+
+To install monitoring components for the environment you previously created (by
+default consisting of two regions: `eu` and `us`), simply run:
+
 ```bash
-# Monitoring setup for the learning environment you setup earlier, by default two-regions (eu, us)
 ./setup.sh
 ```
 
-You can easily customize this by providing your own list of region names as
-arguments.
+You may also specify one or more region names to match a customised setup:
 
 ```bash
-# Monitoring setup for custom environment with 'it' and 'de' regions, simulating Italy and Germany
+# Monitoring setup for clusters named 'it' and 'de'
 ./setup.sh it de
 
 # Monitoring setup for a single-region environment
 ./setup.sh local
 ```
 
-## Accessing the dashboard
-After you run the [setup.sh](./setup.sh) you can access the dashboard by forwarding the Grafana port.
-You will find the concrete commands in the [setup.sh](./setup.sh) output, e.g.
+The script will automatically deploy Prometheus, Grafana, and the CloudNativePG dashboard in each region provided.
+
+---
+
+## Accessing the Dashboard
+
+Once installation completes, you can access Grafana via port forwarding.
+The `setup.sh` script prints the exact commands needed.
+For the default two-region environment, they look similar to:
+
 ```bash
-# Forwarding the Grafana port for the default two-region environment (eu, us)
 kubectl port-forward service/grafana-service 3000:3000 -n grafana --context kind-k8s-eu
 kubectl port-forward service/grafana-service 3001:3000 -n grafana --context kind-k8s-us
 ```
-You can then connect to the Grafana GUI using the forwarded port, e.g., http://localhost:3000.
-The default password for the user `admin` is `admin`. You will be prompted to change the password on the first login.
 
-Find the dashboard under `Home > Dashboards > grafana > CloudNativePG`
+After forwarding the port, open your browser at:
+
+```
+http://localhost:3000
+```
+
+Log in using:
+
+- **Username:** `admin`
+- **Password:** `admin`
+
+Grafana will prompt you to choose a new password at first login.
+
+
+You can find the dashboard under `Home > Dashboards > grafana > CloudNativePG`.
 
 ![dashboard](image.png)
 
 ## PodMonitor
-In order to have Prometheus scrape your Pod Metrics you have to create a `PodMonitor` as described in the [documentation](https://cloudnative-pg.io/documentation/current/monitoring/#creating-a-podmonitor)
+
+To enable Prometheus to scrape metrics from your PostgreSQL pods, you must
+create a `PodMonitor` resource as described in the
+[documentation](https://cloudnative-pg.io/documentation/current/monitoring/#creating-a-podmonitor).
+

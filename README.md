@@ -197,10 +197,15 @@ both the `kind-k8s-eu` and `kind-k8s-us` clusters.
 Ensure that you have the latest version of the `cnpg` plugin installed on your
 local machine.
 
-## Contrib
+## Contrib Directory
 
-The [contrib](./contrib/) folder contains community‑contributed scripts that help you set up additional resources.
-Each subdirectory within contrib includes its own `README.md`, which explains the purpose, usage, and any required configuration.
+The [`contrib`](./contrib/) directory contains a collection of optional
+components that extend the playground environment. One example is the
+monitoring setup based on Prometheus and Grafana, available in the
+[`contrib/monitoring`](./contrib/monitoring/) subdirectory.
+Each contribution includes its own `README.md` file, providing an explanation
+of its purpose and clear instructions on how to deploy and configure the
+additional resources.
 
 ## Nix Flakes
 

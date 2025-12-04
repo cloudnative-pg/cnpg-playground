@@ -92,7 +92,7 @@ fi
     echo ""
     echo " You can then connect to the Grafana GUI using"
     echo " http://localhost:${port}"
-    echo " The default password for the user admin is `admin`. You will be prompted to change the password on the first login."
+    echo " The default password for the user admin is 'admin'. You will be prompted to change the password on the first login."
     echo "-----------------------------------------------------------------------------------------------------------------"    
     # increment target port by 1
     ((port++))
