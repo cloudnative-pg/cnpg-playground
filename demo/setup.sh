@@ -29,6 +29,12 @@ git_repo_root=$(git rev-parse --show-toplevel)
 kube_config_path=${git_repo_root}/k8s/kube-config.yaml
 demo_yaml_path=${git_repo_root}/demo/yaml
 
+check_crd_existence() {
+    # Check if the CRD exists in the cluster
+    kubectl get crd "$1" &> /dev/null
+    return $?
+}
+
 legacy=
 if [ "${LEGACY:-}" = "true" ]; then
    legacy="-legacy"
@@ -102,6 +108,13 @@ for region in eu us; do
    # Create the Postgres cluster
    kubectl apply --context kind-k8s-${region} -f \
      ${demo_yaml_path}/${region}/pg-${region}${legacy}.yaml
+
+   # Create the PodMonitor if Prometheus has been installed
+   if check_crd_existence podmonitors.monitoring.coreos.com
+   then
+     kubectl apply --context kind-k8s-${region} -f \
+       ${demo_yaml_path}/${region}/pg-${region}-podmonitor.yaml
+   fi
 
    # Wait for the cluster to be ready
    kubectl wait --context kind-k8s-${region} \

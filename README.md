@@ -155,6 +155,14 @@ You can also remove specific clusters by passing the region names as arguments.
 ./scripts/teardown.sh it
 ```
 
+## Monitoring with Prometheus and Grafana
+
+The [`monitoring`](./monitoring/) directory provides instructions and resources
+for setting up a monitoring environment based on Prometheus and Grafana.
+Although this component is optional, it is highly recommended—especially for
+demonstration and learning purposes—as it offers valuable insight into the
+system’s behavior and performance.
+
 ## Demonstration with CNPG Playground
 
 The **CNPG Playground** offers a great environment for exploring the
