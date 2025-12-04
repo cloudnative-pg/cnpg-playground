@@ -1,9 +1,9 @@
 #!/usr/bin/env bash
 #
-# This script sets up the Prometheus / Grafana operator
-# Without option it searches for cnpg-playground kind clusters in your environmen
-# and deploy / setup the operators. 
-# To setup monitoring for a specific region, use the region as option.
+# This script installs and configures the Prometheus and Grafana operators.
+# When run without arguments, it automatically detects all cnpg-playground
+# Kind clusters in your environment and deploys the monitoring stack for each.
+# To install monitoring for specific regions only, pass the region names as arguments.
 #
 #
 # Copyright The CloudNativePG Contributors
