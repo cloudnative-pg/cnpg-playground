@@ -155,6 +155,14 @@ You can also remove specific clusters by passing the region names as arguments.
 ./scripts/teardown.sh it
 ```
 
+## Monitoring with Prometheus and Grafana
+
+The [`monitoring`](./monitoring/) directory provides instructions and resources
+for setting up a monitoring environment based on Prometheus and Grafana.
+Although this component is optional, it is highly recommended—especially for
+demonstration and learning purposes—as it offers valuable insight into the
+system’s behavior and performance.
+
 ## Demonstration with CNPG Playground
 
 The **CNPG Playground** offers a great environment for exploring the
@@ -196,16 +204,6 @@ both the `kind-k8s-eu` and `kind-k8s-us` clusters.
 
 Ensure that you have the latest version of the `cnpg` plugin installed on your
 local machine.
-
-## Contrib Directory
-
-The [`contrib`](./contrib/) directory contains a collection of optional
-components that extend the playground environment. One example is the
-monitoring setup based on Prometheus and Grafana, available in the
-[`contrib/monitoring`](./contrib/monitoring/) subdirectory.
-Each contribution includes its own `README.md` file, providing an explanation
-of its purpose and clear instructions on how to deploy and configure the
-additional resources.
 
 ## Nix Flakes
 

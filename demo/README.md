@@ -20,7 +20,10 @@ secondary (Disaster Recovery) cluster through the
 To follow this demonstration, ensure the following are installed on your system:
 
 1. **CNPG Playground**: Refer to the [installation guide](../README.md) for
-  setup instructions.
+  setup instructions. If you intend to use Prometheus together with the Grafana
+  dashboards, make sure that you also deploy the [monitoring](../monitoring/)
+  environment.
+
 2. **`cmctl` (cert-manager CLI)**: Required for secure communication between
   the operator and the `barman-cloud` plugin, which is used for backup and
   recovery with MinIO object stores.
