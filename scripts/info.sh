@@ -30,14 +30,7 @@ fi
 export KUBECONFIG="${KUBE_CONFIG_PATH}"
 
 # --- Auto-detect Regions ---
-echo "🔎 Detecting active playground clusters..."
-REGIONS=($(kind get clusters | grep "^${K8S_BASE_NAME}-" | sed "s/^${K8S_BASE_NAME}-//" || true))
-
-if [ ${#REGIONS[@]} -eq 0 ]; then
-    echo "🤷 No active playground clusters found with the prefix '${K8S_BASE_NAME}-'."
-    exit 0
-fi
-echo "✅ Found regions: ${REGIONS[*]}"
+detect_running_regions
 
 # --- Access Instructions ---
 echo

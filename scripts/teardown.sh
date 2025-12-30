@@ -23,22 +23,7 @@ source "$(dirname "$0")/common.sh"
 
 # --- Main Logic ---
 # Determine regions from arguments, or auto-detect if none are provided
-REGIONS=()
-if [ $# -gt 0 ]; then
-    REGIONS=("$@")
-    echo "🎯 Targeting specified regions for teardown: ${REGIONS[*]}"
-else
-    echo "🔎 Auto-detecting all active playground regions for teardown..."
-    # The '|| true' prevents the script from exiting if grep finds no matches.
-    REGIONS=($(kind get clusters | grep "^${K8S_BASE_NAME}-" | sed "s/^${K8S_BASE_NAME}-//" || true))
-fi
-
-if [ ${#REGIONS[@]} -eq 0 ]; then
-    echo "🤷 No regions found to tear down. Exiting."
-    exit 0
-fi
-
-echo "🔥 Tearing down regions: ${REGIONS[*]}"
+detect_running_regions "$@"
 
 for region in "${REGIONS[@]}"; do
     K8S_CLUSTER_NAME="${K8S_BASE_NAME}-${region}"

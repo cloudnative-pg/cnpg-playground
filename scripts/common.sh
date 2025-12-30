@@ -23,7 +23,7 @@ set -euo pipefail
 
 # --- Common Configuration ---
 # Kind base name for clusters
-K8S_BASE_NAME=${K8S_NAME:-k8s}
+# K8S_BASE_NAME=${K8S_NAME:-k8s}
 
 # MinIO Configuration
 MINIO_IMAGE="${MINIO_IMAGE:-quay.io/minio/minio:RELEASE.2025-09-07T16-13-09Z}"
@@ -59,3 +59,6 @@ fi
 # Determine project root and kubeconfig path
 GIT_REPO_ROOT=$(git rev-parse --show-toplevel)
 KUBE_CONFIG_PATH="${GIT_REPO_ROOT}/k8s/kube-config.yaml"
+
+# source funcs_regions.sh
+source $(git rev-parse --show-toplevel)/scripts/funcs_regions.sh
