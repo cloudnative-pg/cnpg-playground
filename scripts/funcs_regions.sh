@@ -23,10 +23,6 @@
 
 set -euo pipefail
 
-# --- Common Configuration ---
-# Kind base name for clusters
-K8S_BASE_NAME=${K8S_NAME:-k8s}
-
 # --- Set regions ---
 # if called with an argument, $REGIONS is set to it's value
 # if no argument is provided, $REGIONS is set to the defualt regions "eu" and "us"
