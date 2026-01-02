@@ -28,15 +28,7 @@ source $(git rev-parse --show-toplevel)/scripts/common.sh
 
 # --- Main Logic ---
 # Determine regions from arguments, or auto-detect if none are provided
-REGIONS=()
-if [ $# -gt 0 ]; then
-    REGIONS=("$@")
-    echo "🎯 Targeting specified regions for monitoring setup: ${REGIONS[*]}"
-else
-    echo "🔎 Auto-detecting all active playground regions for monitoring setup..."
-    # The '|| true' prevents the script from exiting if grep finds no matches.
-    REGIONS=($(kind get clusters | grep "^${K8S_BASE_NAME}-" | sed "s/^${K8S_BASE_NAME}-//" || true))
-fi
+detect_running_regions "$@"
 
 # Add a target port for the port-forward, the port will be incremeted by 1 for each region
 port=3000

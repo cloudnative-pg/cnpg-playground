@@ -53,10 +53,7 @@ echo
 
 # --- Script Setup ---
 # Determine regions from arguments, or use defaults
-REGIONS=("$@")
-if [ ${#REGIONS[@]} -eq 0 ]; then
-    REGIONS=("eu" "us")
-fi
+set_regions "$@"
 
 # Setup a single, shared Kubeconfig for all clusters
 export KUBECONFIG="${KUBE_CONFIG_PATH}"
