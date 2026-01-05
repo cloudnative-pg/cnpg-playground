@@ -1,9 +1,12 @@
 #!/usr/bin/env bash
 #
-# This script installs and configures the Prometheus and Grafana operators.
-# When run without arguments, it automatically detects all cnpg-playground
-# Kind clusters in your environment and deploys the monitoring stack for each.
-# To install monitoring for specific regions only, pass the region names as arguments.
+# This script contains the functions used to set the ${REGIONS} variable.
+# set_regions() --> if called without an argument, EU and US are set
+#                   otherwise the arguments.
+#                   
+# detect_running_regions() -->  if called without an argument, the running
+#                               CNPG-Playground Kind clusters regions are set
+#                               otherwise the arguments.
 #
 #
 # Copyright The CloudNativePG Contributors
@@ -24,8 +27,6 @@
 set -euo pipefail
 
 # --- Set regions ---
-# if called with an argument, $REGIONS is set to it's value
-# if no argument is provided, $REGIONS is set to the defualt regions "eu" and "us"
 set_regions() {
     if [ $# -eq 0 ]; then
         REGIONS=("eu" "us")
@@ -37,8 +38,6 @@ set_regions() {
 }
 
 # --- detect regions ---
-# if called with an argument, $REGIONS is set to it's value
-# if no argument is provided, $REGIONS is set to the running kind clusters
 detect_running_regions() {
     if [ $# -gt 0 ]; then
         REGIONS=("$@")
