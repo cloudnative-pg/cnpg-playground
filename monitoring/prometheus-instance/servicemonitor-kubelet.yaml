@@ -1,0 +1,54 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: kubelet
+  namespace: kube-system
+  labels:
+    app.kubernetes.io/name: kubelet
+spec:
+  clusterIP: None
+  ports:
+  - name: https-metrics
+    port: 10250
+---
+apiVersion: monitoring.coreos.com/v1
+kind: ServiceMonitor
+metadata:
+  name: kubelet
+  namespace: kube-system
+  labels:
+    app.kubernetes.io/name: kubelet
+spec:
+  endpoints:
+  - port: https-metrics
+    interval: 30s
+    scheme: https
+    bearerTokenFile: /var/run/secrets/kubernetes.io/serviceaccount/token
+    tlsConfig:
+      insecureSkipVerify: true
+    relabelings:
+    - targetLabel: metrics_path
+      replacement: /metrics
+  - port: https-metrics
+    interval: 30s
+    path: /metrics/cadvisor
+    scheme: https
+    bearerTokenFile: /var/run/secrets/kubernetes.io/serviceaccount/token
+    tlsConfig:
+      insecureSkipVerify: true
+    relabelings:
+    - targetLabel: metrics_path
+      replacement: /metrics/cadvisor
+  - port: https-metrics
+    interval: 30s
+    path: /metrics/probes
+    scheme: https
+    bearerTokenFile: /var/run/secrets/kubernetes.io/serviceaccount/token
+    tlsConfig:
+      insecureSkipVerify: true
+    relabelings:
+    - targetLabel: metrics_path
+      replacement: /metrics/probes
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: kubelet

@@ -66,9 +66,23 @@ You can find the dashboard under `Home > Dashboards > grafana > CloudNativePG`.
 > streaming is unavailable, but all other Grafana features work normally
 > when accessed via port-forward.
 
+## CloudNativePG Grafana Dashboard
+
+[CloudNativePG provides a default dashboard](https://cloudnative-pg.io/docs/devel/quickstart#grafana-dashboard) for Grafana in the dedicated [`grafana-dashboards` repository](https://github.com/cloudnative-pg/grafana-dashboards). The CNPG Playground monitoring `setup.sh` automatically installs the CNPG dashboard into grafana. You can also download the file [grafana-dashboard.json](https://github.com/cloudnative-pg/grafana-dashboards/blob/main/charts/cluster/grafana-dashboard.json) and manually import it via the GUI (menu: Dashboards > New > Import). 
+
+### Dependencies
+
+The CNPG Playground monitoring `setup.sh` also installs and configures the dependencies of this dashboard:
+
+1. `node-exporter`: Node-level metrics (CPU, memory, disk, network at the host level)
+2. `kube-state-metrics`: Kubernetes object metrics (pods, deployments, resource requests/limits)
+3. Kubelet/cAdvisor Metrics (via `/metrics/cadvisor`): Container-level metrics (CPU, memory, network, disk I/O)
+4. Canonical **Kubernetes recording rules from [kube-prometheus](https://github.com/prometheus-operator/kube-prometheus)**, which pre-compute common aggregations used by the CloudNativePG dashboard such as `node_namespace_pod_container:container_cpu_usage_seconds_total:sum_irate` and `node_namespace_pod_container:container_memory_working_set_bytes` and `namespace_cpu:kube_pod_container_resource_requests:sum`
+
 ## PodMonitor
 
 To enable Prometheus to scrape metrics from your PostgreSQL pods, you must
 create a `PodMonitor` resource as described in the
 [documentation](https://cloudnative-pg.io/documentation/current/monitoring/#creating-a-podmonitor).
-
+ 
+ If a monitoring stack is running, then `demo/setup.sh` will automatically create PodMonitors.
