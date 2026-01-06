@@ -115,16 +115,20 @@ for region in eu us; do
    kubectl apply --context ${CONTEXT_NAME} -f \
      ${demo_yaml_path}/${region}/pg-${region}${legacy}.yaml
 
-   # Create the PodMonitor if Prometheus has been installed
-   if check_crd_existence podmonitors.monitoring.coreos.com
-   then
-     kubectl apply --context ${CONTEXT_NAME} -f \
-       ${demo_yaml_path}/${region}/pg-${region}-podmonitor.yaml
-   fi
-
    # Wait for the cluster to be ready
    kubectl wait --context ${CONTEXT_NAME} \
      --timeout 30m \
      --for=condition=Ready cluster/pg-${region}
+
+   # Create the PodMonitor if Prometheus has been installed
+   # Placed at the end to avoid being affected by other operations
+   # Wait 5 seconds for cluster to fully stabilize before creating PodMonitor
+   #    cf. https://github.com/cloudnative-pg/cnpg-playground/issues/46
+   if check_crd_existence podmonitors.monitoring.coreos.com
+   then
+     sleep 5
+     kubectl apply --context ${CONTEXT_NAME} -f \
+       ${demo_yaml_path}/${region}/pg-${region}-podmonitor.yaml
+   fi
 
 done
