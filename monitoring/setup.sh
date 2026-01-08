@@ -39,7 +39,7 @@ else
 fi
 
 # Add a target port for the port-forward, the port will be incremeted by 1 for each region
-port=3000
+port=3001
 
 for region in "${REGIONS[@]}"; do
     echo "-------------------------------------------------------------"
