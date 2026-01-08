@@ -36,6 +36,7 @@ spec:
     bearerTokenFile: /var/run/secrets/kubernetes.io/serviceaccount/token
     tlsConfig:
       insecureSkipVerify: true
+    honorLabels: true
     relabelings:
     - targetLabel: metrics_path
       replacement: /metrics/cadvisor

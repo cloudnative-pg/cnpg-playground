@@ -85,6 +85,7 @@ spec:
   endpoints:
   - port: http-metrics
     interval: 30s
+    honorLabels: true
   - port: telemetry
     interval: 30s
   selector:

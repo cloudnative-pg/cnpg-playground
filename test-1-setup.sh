@@ -139,7 +139,7 @@ for region in eu us; do
   sleep 3
   
   # Check if recording rule metrics exist
-  RULE_METRICS=$(curl -s "http://localhost:${PORT}/api/v1/query?query=node_namespace_pod_container:container_cpu_usage_seconds_total:sum_irate" | jq -r '.data.result | length' || echo "0")
+  RULE_METRICS=$(curl -s "http://localhost:${PORT}/api/v1/query" --data-urlencode "query=node_namespace_pod_container:container_cpu_usage_seconds_total:sum_irate{pod=~\"pg-${region}-.*\",namespace=\"default\",node!=\"\"}" | jq -r '.data.result | length' || echo "0")
   [ "${RULE_METRICS}" -ge 1 ] && \
     pass "${region}: Recording rule metrics (${RULE_METRICS})" || fail "${region}: Recording rule metrics missing"
 done
