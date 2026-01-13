@@ -3,7 +3,7 @@
 # This script contains the functions used to set the ${REGIONS} variable.
 # set_regions() --> if called without an argument, EU and US are set
 #                   otherwise the arguments.
-#                   
+#
 # detect_running_regions() -->  if called without an argument, the running
 #                               CNPG-Playground Kind clusters regions are set
 #                               otherwise the arguments.
@@ -46,6 +46,10 @@ detect_running_regions() {
         echo "🔎 Auto-detecting all active playground regions..."
         # The '|| true' prevents the script from exiting if grep finds no matches.
         REGIONS=($(kind get clusters | grep "^${K8S_BASE_NAME}-" | sed "s/^${K8S_BASE_NAME}-//" || true))
-        echo "✅ Found regions: ${REGIONS[*]}"
+        if [ ${#REGIONS[@]} -gt 0 ]; then
+            echo "✅ Found regions: ${REGIONS[*]}"
+	else
+            echo "✅ No region detected"
+	fi
     fi
 }
