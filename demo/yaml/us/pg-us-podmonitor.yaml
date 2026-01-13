@@ -1,0 +1,10 @@
+apiVersion: monitoring.coreos.com/v1
+kind: PodMonitor
+metadata:
+  name: pg-us
+spec:
+  selector:
+    matchLabels:
+      cnpg.io/cluster: pg-us
+  podMetricsEndpoints:
+  - port: metrics
