@@ -23,7 +23,8 @@ set -euo pipefail
 
 # --- Common Configuration ---
 # Kind base name for clusters
-K8S_BASE_NAME=${K8S_NAME:-k8s}
+K8S_CONTEXT_PREFIX=${K8S_CONTEXT_PREFIX-kind-}
+K8S_BASE_NAME=${K8S_NAME-k8s-}
 
 # MinIO Configuration
 MINIO_IMAGE="${MINIO_IMAGE:-quay.io/minio/minio:RELEASE.2025-09-07T16-13-09Z}"

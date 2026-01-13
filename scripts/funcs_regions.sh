@@ -45,11 +45,23 @@ detect_running_regions() {
     else
         echo "🔎 Auto-detecting all active playground regions..."
         # The '|| true' prevents the script from exiting if grep finds no matches.
-        REGIONS=($(kind get clusters | grep "^${K8S_BASE_NAME}-" | sed "s/^${K8S_BASE_NAME}-//" || true))
+        REGIONS=($(kind get clusters | grep "^${K8S_BASE_NAME}" | sed "s/^${K8S_BASE_NAME}//" || true))
         if [ ${#REGIONS[@]} -gt 0 ]; then
             echo "✅ Found regions: ${REGIONS[*]}"
 	else
             echo "✅ No region detected"
 	fi
     fi
+}
+
+# Helper function that builds the name of the cluster in a standard way given the region
+get_cluster_name() {
+    local region="$1"
+    echo "${K8S_BASE_NAME}${region}"
+}
+
+# Helper function that builds the name of the context in a standard way given the region
+get_cluster_context() {
+    local region="$1"
+    echo "${K8S_CONTEXT_PREFIX}${K8S_BASE_NAME}${region}"
 }

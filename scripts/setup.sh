@@ -37,14 +37,14 @@ echo "✅ Prerequisites met. Using '$CONTAINER_PROVIDER' as the container provid
 # --- Pre-flight Check ---
 echo "🔎 Verifying that no existing playground clusters are running..."
 # The '|| true' prevents the script from exiting if grep finds no matches.
-existing_count=$(kind get clusters | grep -c "^${K8S_BASE_NAME}-" || true)
+existing_count=$(kind get clusters | grep -c "^${K8S_BASE_NAME}" || true)
 
 if [ "${existing_count}" -gt 0 ]; then
     echo "❌ Error: Found ${existing_count} existing playground cluster(s)."
     echo "Please run './scripts/teardown.sh' to remove the existing environment before running setup."
     echo
     echo "Found clusters:"
-    kind get clusters | grep "^${K8S_BASE_NAME}-"
+    kind get clusters | grep "^${K8S_BASE_NAME}"
     exit 1
 fi
 
@@ -70,7 +70,7 @@ for region in "${REGIONS[@]}"; do
     echo "🚀 Provisioning resources for region: ${region}"
     echo "--------------------------------------------------"
 
-    K8S_CLUSTER_NAME="${K8S_BASE_NAME}-${region}"
+    K8S_CLUSTER_NAME=$(get_cluster_name "${region}")
     MINIO_CONTAINER_NAME="${MINIO_BASE_NAME}-${region}"
 
     echo "📦 Creating MinIO container '${MINIO_CONTAINER_NAME}' on host port ${current_minio_port}..."
@@ -107,7 +107,7 @@ echo "--------------------------------------------------"
 echo "🔑 Distributing MinIO secrets to all clusters"
 echo "--------------------------------------------------"
 for target_region in "${REGIONS[@]}"; do
-    target_cluster_context="kind-${K8S_BASE_NAME}-${target_region}"
+    target_cluster_context=$(get_cluster_context "${target_region}")
     echo "   -> Configuring secrets in cluster: ${target_cluster_context}"
 
     for source_minio_name in "${all_minio_names[@]}"; do

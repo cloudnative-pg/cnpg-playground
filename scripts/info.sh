@@ -43,11 +43,12 @@ echo "export KUBECONFIG=${KUBE_CONFIG_PATH}"
 echo
 echo "Available cluster contexts:"
 for region in "${REGIONS[@]}"; do
-    echo "  • kind-${K8S_BASE_NAME}-${region}"
+    CONTEXT_NAME=$(get_cluster_context "${region}")
+    echo "  • ${CONTEXT_NAME}"
 done
 echo
 echo "To switch to a specific cluster (e.g., the '${REGIONS[0]}' region), use:"
-echo "kubectl config use-context kind-${K8S_BASE_NAME}-${REGIONS[0]}"
+echo "kubectl config use-context $(get_cluster_context ${REGIONS[0]})"
 echo
 
 # --- Main Info Loop ---
@@ -55,16 +56,17 @@ echo "--------------------------------------------------"
 echo "ℹ️  Cluster Information"
 echo "--------------------------------------------------"
 for region in "${REGIONS[@]}"; do
-    CONTEXT="kind-${K8S_BASE_NAME}-${region}"
+    CLUSTER_NAME=$(get_cluster_name "${region}")
+    CONTEXT_NAME=$(get_cluster_context "${region}")
     echo
-    echo "🔷 Cluster: ${CONTEXT}"
+    echo "🔷 Cluster: ${CLUSTER_NAME}"
     echo "==================================="
     echo "🔹 Version:"
-    kubectl --context "${CONTEXT}" version
+    kubectl --context "${CONTEXT_NAME}" version
     echo
     echo "🔹 Nodes:"
-    kubectl --context "${CONTEXT}" get nodes -o wide
+    kubectl --context "${CONTEXT_NAME}" get nodes -o wide
     echo
     echo "🔹 Secrets:"
-    kubectl --context "${CONTEXT}" get secrets
+    kubectl --context "${CONTEXT_NAME}" get secrets
 done
