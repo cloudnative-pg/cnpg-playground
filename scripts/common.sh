@@ -59,3 +59,6 @@ fi
 # Determine project root and kubeconfig path
 GIT_REPO_ROOT=$(git rev-parse --show-toplevel)
 KUBE_CONFIG_PATH="${GIT_REPO_ROOT}/k8s/kube-config.yaml"
+
+# source funcs_regions.sh
+source $(git rev-parse --show-toplevel)/scripts/funcs_regions.sh
