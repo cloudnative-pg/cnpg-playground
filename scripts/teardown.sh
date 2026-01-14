@@ -25,10 +25,17 @@ source "$(dirname "$0")/common.sh"
 # Determine regions from arguments, or auto-detect if none are provided
 detect_running_regions "$@"
 
+if [ ${#REGIONS[@]} -eq 0 ]; then
+    echo "🤷 No regions found to tear down. Exiting."
+    exit 0
+fi
+
+echo "🔥 Tearing down regions: ${REGIONS[*]}"
+
 for region in "${REGIONS[@]}"; do
-    K8S_CLUSTER_NAME="${K8S_BASE_NAME}-${region}"
+    K8S_CLUSTER_NAME=$(get_cluster_name "${region}")
+    CONTEXT_NAME=$(get_cluster_context "${region}")
     MINIO_CONTAINER_NAME="${MINIO_BASE_NAME}-${region}"
-    CONTEXT_NAME="kind-${K8S_CLUSTER_NAME}"
 
     echo "--------------------------------------------------"
     echo "🔥 Tearing down region: ${region}"

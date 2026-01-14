@@ -38,17 +38,18 @@ for region in "${REGIONS[@]}"; do
     echo " 🔥 Provisioning Prometheus resources for region: ${region}"
     echo "-------------------------------------------------------------"
 
-    K8S_CLUSTER_NAME="${K8S_BASE_NAME}-${region}"
+    K8S_CLUSTER_NAME=$(get_cluster_name "${region}")
+    CONTEXT_NAME=$(get_cluster_context "${region}")
 
 # Deploy the Prometheus operator in the playground Kubernetes clusters
-    kubectl --context kind-${K8S_CLUSTER_NAME} create ns prometheus-operator || true
+    kubectl --context ${CONTEXT_NAME} create ns prometheus-operator || true
     kubectl kustomize ${GIT_REPO_ROOT}/monitoring/prometheus-operator | \
-      kubectl --context kind-${K8S_CLUSTER_NAME} apply --force-conflicts --server-side -f -
+      kubectl --context ${CONTEXT_NAME} apply --force-conflicts --server-side -f -
 
 # We make sure that monitoring workloads are deployed in the infrastructure node.
     kubectl kustomize ${GIT_REPO_ROOT}/monitoring/prometheus-instance | \
-        kubectl --context=kind-${K8S_CLUSTER_NAME} apply --force-conflicts --server-side -f -
-    kubectl --context=kind-${K8S_CLUSTER_NAME} -n prometheus-operator \
+        kubectl --context=${CONTEXT_NAME} apply --force-conflicts --server-side -f -
+    kubectl --context=${CONTEXT_NAME} -n prometheus-operator \
       patch deployment prometheus-operator \
       --type='merge' \
       --patch='{"spec":{"template":{"spec":{"tolerations":[{"key":"node-role.kubernetes.io/infra","operator":"Exists","effect":"NoSchedule"}],"nodeSelector":{"node-role.kubernetes.io/infra":""}}}}}'
@@ -58,16 +59,16 @@ for region in "${REGIONS[@]}"; do
     echo "-------------------------------------------------------------"
 
 # Deploying Grafana operator
-    kubectl --context kind-${K8S_CLUSTER_NAME} apply --force-conflicts --server-side \
+    kubectl --context ${CONTEXT_NAME} apply --force-conflicts --server-side \
       -f https://github.com/grafana/grafana-operator/releases/latest/download/kustomize-cluster_scoped.yaml
-    kubectl --context kind-${K8S_CLUSTER_NAME} -n grafana \
+    kubectl --context ${CONTEXT_NAME} -n grafana \
       patch deployment grafana-operator-controller-manager \
       --type='merge' \
       --patch='{"spec":{"template":{"spec":{"tolerations":[{"key":"node-role.kubernetes.io/infra","operator":"Exists","effect":"NoSchedule"}],"nodeSelector":{"node-role.kubernetes.io/infra":""}}}}}'
 
 # Creating Grafana instance and dashboards
     kubectl kustomize ${GIT_REPO_ROOT}/monitoring/grafana/ | \
-      kubectl --context kind-${K8S_CLUSTER_NAME} apply -f -
+      kubectl --context ${CONTEXT_NAME} apply -f -
 
 # Restart the operator
 if kubectl get ns cnpg-system &> /dev/null
@@ -80,7 +81,7 @@ fi
     echo " ⏩ To forward the Grafana service for region: ${region} to your localhost"
     echo " Wait for the Grafana service to be created and then forward the service"
     echo ""
-    echo " kubectl port-forward service/grafana-service ${port}:3000 -n grafana --context kind-k8s-${region}"
+    echo " kubectl port-forward service/grafana-service ${port}:3000 -n grafana --context ${CONTEXT_NAME}"
     echo ""
     echo " You can then connect to the Grafana GUI using"
     echo " http://localhost:${port}"

@@ -24,6 +24,10 @@
 set -ux
 
 git_repo_root=$(git rev-parse --show-toplevel)
+
+# Source the common setup script
+source ${git_repo_root}/scripts/common.sh
+
 kube_config_path=${git_repo_root}/k8s/kube-config.yaml
 demo_yaml_path=${git_repo_root}/demo/yaml
 
@@ -34,25 +38,27 @@ export KUBECONFIG=${kube_config_path}
 # Delete deployment, one region at a time
 for region in eu us; do
 
+   CONTEXT_NAME=$(get_cluster_context "${region}")
+
    # Delete the Postgres cluster
-   kubectl delete --context kind-k8s-${region} -f \
+   kubectl delete --context ${CONTEXT_NAME} -f \
      ${demo_yaml_path}/${region}
 
    # Delete Barman object stores
-   kubectl delete --context kind-k8s-${region} -f \
+   kubectl delete --context ${CONTEXT_NAME} -f \
      ${demo_yaml_path}/object-stores
 
    # Delete Barman Cloud Plugin
-   kubectl delete --context kind-k8s-${region} -f \
+   kubectl delete --context ${CONTEXT_NAME} -f \
       https://github.com/cloudnative-pg/plugin-barman-cloud/releases/latest/download/manifest.yaml
 
    # Delete cert-manager
-   kubectl delete --context kind-k8s-${region} -f \
+   kubectl delete --context ${CONTEXT_NAME} -f \
       https://github.com/cert-manager/cert-manager/releases/latest/download/cert-manager.yaml
 
    # Delete CNPG operator
    kubectl cnpg install generate --control-plane | \
-     kubectl --context kind-k8s-${region} delete -f -
+     kubectl --context ${CONTEXT_NAME} delete -f -
 
    # Remove backup data
    docker exec minio-${region} rm -rf /data/backups/pg-${region}
