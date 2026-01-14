@@ -24,7 +24,7 @@ if "${ROOT}/scripts/setup.sh"; then pass "Infrastructure setup finish at $(date 
 # Test infrastructure health (MinIO API + Kubernetes API)
 log "Testing infrastructure health..."
 for region in eu us; do
-  CTX="kind-${K8S_BASE_NAME}-${region}"
+  CTX=$(get_cluster_context "${region}")
   
   # Test Kubernetes API
   kubectl --context "${CTX}" get nodes && \
@@ -47,7 +47,7 @@ sleep 60
 # Test monitoring health (Prometheus + Grafana + node/system metrics)
 log "Testing monitoring stack health..."
 for region in eu us; do
-  CTX="kind-${K8S_BASE_NAME}-${region}"
+  CTX=$(get_cluster_context "${region}")
   
   # Wait for Prometheus pod
   kubectl --context "${CTX}" wait --for=condition=Ready pod -l app.kubernetes.io/name=prometheus \
@@ -62,8 +62,9 @@ done
 
 for region in eu us; do
   # Test Prometheus HTTP and metrics
+  CTX=$(get_cluster_context "${region}")
   PORT=9090; [ "$region" = "us" ] && PORT=9091
-  kubectl port-forward -n prometheus-operator prometheus-prometheus-0 ${PORT}:9090 --context "kind-${K8S_BASE_NAME}-${region}" &
+  kubectl port-forward -n prometheus-operator prometheus-prometheus-0 ${PORT}:9090 --context "${CTX}" &
   sleep 3
 
   [ "$(curl -s http://localhost:${PORT}/-/ready)" = "Prometheus Server is Ready." ] && \
@@ -80,7 +81,7 @@ for region in eu us; do
   
   # Test Grafana HTTP
   GPORT=3000; [ "$region" = "us" ] && GPORT=3001
-  kubectl port-forward -n grafana service/grafana-service ${GPORT}:3000 --context "kind-${K8S_BASE_NAME}-${region}" &
+  kubectl port-forward -n grafana service/grafana-service ${GPORT}:3000 --context "${CTX}" &
   sleep 3
   
   GSTATUS=$(curl -s -o /dev/null -w "%{http_code}" http://localhost:${GPORT}/login || echo "000")
@@ -96,7 +97,7 @@ if LEGACY=true "${ROOT}/demo/setup.sh"; then pass "PostgreSQL setup finish at $(
 # Test PostgreSQL health and metrics
 log "Testing PostgreSQL clusters..."
 for region in eu us; do
-  CTX="kind-${K8S_BASE_NAME}-${region}"
+  CTX=$(get_cluster_context "${region}")
   log "Testing region: ${region}"
   
   # PostgreSQL readiness
@@ -115,8 +116,9 @@ sleep 60  # Increased from 45s to ensure both regions have time to scrape
 cleanup  # Clean any lingering port-forwards
 
 for region in eu us; do
+  CTX=$(get_cluster_context "${region}")
   PORT=9090; [ "$region" = "us" ] && PORT=9091
-  kubectl port-forward -n prometheus-operator prometheus-prometheus-0 ${PORT}:9090 --context "kind-${K8S_BASE_NAME}-${region}" &
+  kubectl port-forward -n prometheus-operator prometheus-prometheus-0 ${PORT}:9090 --context "${CTX}" &
   sleep 3
   
   PGMETRICS=$(curl -s "http://localhost:${PORT}/api/v1/query?query=cnpg_collector_up" | jq -r '.data.result | length' || echo "0")
@@ -132,7 +134,7 @@ log "Waiting 3.5 minutes for recording rules to evaluate (data + buffer)...  sta
 sleep 210  # 3.5 minutes wait for sufficient time series data
 
 for region in eu us; do
-  CTX="kind-${K8S_BASE_NAME}-${region}"
+  CTX=$(get_cluster_context "${region}")
   PORT=9090; [ "$region" = "us" ] && PORT=9091
   
   kubectl port-forward -n prometheus-operator prometheus-prometheus-0 ${PORT}:9090 --context "${CTX}" &

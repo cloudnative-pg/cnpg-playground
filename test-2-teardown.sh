@@ -20,7 +20,8 @@ trap cleanup EXIT
 # Pre-flight check: Verify database is running before teardown tests
 log "Pre-flight check: Verifying database is running..."
 for region in eu us; do 
-  kubectl --context "kind-${K8S_BASE_NAME}-${region}" wait --for=condition=Ready pod -l cnpg.io/cluster=pg-${region} --timeout=10s && \
+  CTX=$(get_cluster_context "${region}")
+  kubectl --context "${CTX}" wait --for=condition=Ready pod -l cnpg.io/cluster=pg-${region} --timeout=10s && \
     pass "${region}: PostgreSQL running" || { fail "${region}: PostgreSQL not ready. Run test-1-setup.sh first."; exit 1; }
 done
 
@@ -29,7 +30,7 @@ log "Tearing down PostgreSQL clusters..."
 "${ROOT}/demo/teardown.sh" && pass "PostgreSQL teardown" || fail "PostgreSQL teardown"
 
 for region in eu us; do
-  CTX="kind-${K8S_BASE_NAME}-${region}"
+  CTX=$(get_cluster_context "${region}")
   PGPODS=$(kubectl --context "${CTX}" get pods -l cnpg.io/cluster=pg-${region} --no-headers | wc -l || echo "0")
   [ "${PGPODS}" -eq 0 ] && pass "${region}: PostgreSQL removed" || fail "${region}: PostgreSQL still exists"
 done
@@ -38,7 +39,7 @@ log "Recreating PostgreSQL clusters..."
 if LEGACY=true "${ROOT}/demo/setup.sh"; then pass "PostgreSQL re-setup"; else fail "PostgreSQL re-setup"; exit 1; fi
 
 for region in eu us; do
-  CTX="kind-${K8S_BASE_NAME}-${region}"
+  CTX=$(get_cluster_context "${region}")
   kubectl --context "${CTX}" wait --for=condition=Ready pod -l cnpg.io/cluster=pg-${region} --timeout=30s && \
     pass "${region}: PostgreSQL ready" || fail "${region}: PostgreSQL not ready"
 done
@@ -48,7 +49,7 @@ log "Tearing down monitoring stack..."
 "${ROOT}/monitoring/teardown.sh" && pass "Monitoring teardown" || fail "Monitoring teardown"
 
 for region in eu us; do
-  CTX="kind-${K8S_BASE_NAME}-${region}"
+  CTX=$(get_cluster_context "${region}")
   for ns in prometheus-operator grafana; do
     ! kubectl --context "${CTX}" get namespace "${ns}" && \
       pass "${region}: ${ns} removed" || fail "${region}: ${ns} still exists"
@@ -59,7 +60,7 @@ log "Recreating monitoring stack..."
 if "${ROOT}/monitoring/setup.sh"; then pass "Monitoring re-setup"; else fail "Monitoring re-setup"; exit 1; fi
 
 for region in eu us; do
-  CTX="kind-${K8S_BASE_NAME}-${region}"
+  CTX=$(get_cluster_context "${region}")
   kubectl --context "${CTX}" wait --for=condition=Ready pod -l app.kubernetes.io/name=prometheus \
     -n prometheus-operator --timeout=90s && \
     pass "${region}: Prometheus ready" || fail "${region}: Prometheus not ready"
