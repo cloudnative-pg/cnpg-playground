@@ -79,14 +79,14 @@ for region in eu us; do
   [ "${CONTAINER_METRICS}" -ge 1 ] && \
     pass "${region}: Container metrics available (${CONTAINER_METRICS})" || fail "${region}: Container metrics missing"
   
-  # Test Grafana HTTP
+  # Test Grafana dashboard
   GPORT=3000; [ "$region" = "us" ] && GPORT=3001
   kubectl port-forward -n grafana service/grafana-service ${GPORT}:3000 --context "${CTX}" &
   sleep 3
   
-  GSTATUS=$(curl -s -o /dev/null -w "%{http_code}" http://localhost:${GPORT}/login || echo "000")
-  [ "${GSTATUS}" = "200" ] && \
-    pass "${region}: Grafana HTTP" || fail "${region}: Grafana HTTP failed"
+  DASHBOARD_COUNT=$(curl -s -u admin:admin "http://localhost:${GPORT}/api/search?query=cloudnativepg" | jq 'length' 2>/dev/null || echo "0")
+  [ "${DASHBOARD_COUNT}" -ge 1 ] && \
+    pass "${region}: CloudNativePG dashboard exists" || fail "${region}: CloudNativePG dashboard missing"
 done
 
 cleanup
