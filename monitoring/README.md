@@ -38,14 +38,14 @@ The `setup.sh` script prints the exact commands needed.
 For the default two-region environment, they look similar to:
 
 ```bash
-kubectl port-forward service/grafana-service 3000:3000 -n grafana --context kind-k8s-eu
-kubectl port-forward service/grafana-service 3001:3000 -n grafana --context kind-k8s-us
+kubectl port-forward service/grafana-service 3001:3000 -n grafana --context kind-k8s-eu
+kubectl port-forward service/grafana-service 3002:3000 -n grafana --context kind-k8s-us
 ```
 
 After forwarding the port, open your browser at:
 
 ```
-http://localhost:3000
+http://localhost:3001
 ```
 
 Log in using:
