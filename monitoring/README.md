@@ -60,6 +60,12 @@ You can find the dashboard under `Home > Dashboards > grafana > CloudNativePG`.
 
 ![dashboard](image.png)
 
+> **Note:** Grafana Live is disabled (`max_connections: 0`) to prevent
+> WebSocket connection buildup that can exhaust kubectl port-forward
+> streams and cause timeout errors. This means real-time dashboard
+> streaming is unavailable, but all other Grafana features work normally
+> when accessed via port-forward.
+
 ## PodMonitor
 
 To enable Prometheus to scrape metrics from your PostgreSQL pods, you must
