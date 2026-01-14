@@ -11,6 +11,8 @@ spec:
     security:
       admin_user: admin
       admin_password: admin
+    live:
+      max_connections: "0"
   deployment:
     spec:
       template:
