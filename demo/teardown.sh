@@ -41,24 +41,24 @@ for region in eu us; do
    CONTEXT_NAME=$(get_cluster_context "${region}")
 
    # Delete the Postgres cluster
-   kubectl delete --context ${CONTEXT_NAME} -f \
+   kubectl delete --context ${CONTEXT_NAME} --ignore-not-found=true -f \
      ${demo_yaml_path}/${region}
 
    # Delete Barman object stores
-   kubectl delete --context ${CONTEXT_NAME} -f \
+   kubectl delete --context ${CONTEXT_NAME} --ignore-not-found=true -f \
      ${demo_yaml_path}/object-stores
 
    # Delete Barman Cloud Plugin
-   kubectl delete --context ${CONTEXT_NAME} -f \
+   kubectl delete --context ${CONTEXT_NAME} --ignore-not-found=true -f \
       https://github.com/cloudnative-pg/plugin-barman-cloud/releases/latest/download/manifest.yaml
 
    # Delete cert-manager
-   kubectl delete --context ${CONTEXT_NAME} -f \
+   kubectl delete --context ${CONTEXT_NAME} --ignore-not-found=true -f \
       https://github.com/cert-manager/cert-manager/releases/latest/download/cert-manager.yaml
 
    # Delete CNPG operator
    kubectl cnpg install generate --control-plane | \
-     kubectl --context ${CONTEXT_NAME} delete -f -
+     kubectl --context ${CONTEXT_NAME} delete --ignore-not-found=true -f -
 
    # Remove backup data
    docker exec minio-${region} rm -rf /data/backups/pg-${region}
