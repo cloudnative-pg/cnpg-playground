@@ -28,6 +28,7 @@ done
 # Test teardown and recreation of PostgreSQL layer
 log "Tearing down PostgreSQL clusters..."
 "${ROOT}/demo/teardown.sh" && pass "PostgreSQL teardown" || fail "PostgreSQL teardown"
+sleep 10   # extra time for pods to shut down (otherwise, the following test occasionally fails)
 
 for region in eu us; do
   CTX=$(get_cluster_context "${region}")
@@ -74,7 +75,8 @@ done
 log "Tearing down infrastructure..."
 "${ROOT}/scripts/teardown.sh" && pass "Infrastructure teardown" || fail "Infrastructure teardown"
 for region in eu us; do
-  ! kind get clusters | grep -qx "${K8S_BASE_NAME}-${region}" && \
+  CLUSTER_NAME=$(get_cluster_name "${region}")
+  ! kind get clusters | grep -qx "${CLUSTER_NAME}" && \
     pass "${region}: Cluster removed" || fail "${region}: Cluster still exists"
   
   # Verify MinIO containers are removed

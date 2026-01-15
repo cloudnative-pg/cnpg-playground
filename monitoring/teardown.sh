@@ -27,15 +27,7 @@ source $(git rev-parse --show-toplevel)/scripts/common.sh
 
 # --- Main Logic ---
 # Determine regions from arguments, or auto-detect if none are provided
-REGIONS=()
-if [ $# -gt 0 ]; then
-    REGIONS=("$@")
-    echo "🎯 Targeting specified regions for monitoring teardown: ${REGIONS[*]}"
-else
-    echo "🔎 Auto-detecting all active playground regions for monitoring teardown..."
-    # The '|| true' prevents the script from exiting if grep finds no matches.
-    REGIONS=($(kind get clusters | grep "^${K8S_BASE_NAME}-" | sed "s/^${K8S_BASE_NAME}-//" || true))
-fi
+detect_running_regions "$@"
 
 if [ ${#REGIONS[@]} -eq 0 ]; then
     echo "🤷 No regions found to tear down monitoring from. Exiting."
@@ -49,8 +41,8 @@ for region in "${REGIONS[@]}"; do
     echo " 🔥 Removing monitoring resources from region: ${region}"
     echo "-------------------------------------------------------------"
 
-    K8S_CLUSTER_NAME="${K8S_BASE_NAME}-${region}"
-    CONTEXT_NAME="kind-${K8S_CLUSTER_NAME}"
+    K8S_CLUSTER_NAME=$(get_cluster_name "${region}")
+    CONTEXT_NAME=$(get_cluster_context "${region}")
 
     # Check if cluster exists
     if ! kind get clusters | grep -q "^${K8S_CLUSTER_NAME}$"; then
