@@ -1,7 +1,7 @@
 apiVersion: monitoring.coreos.com/v1
 kind: PodMonitor
 metadata:
-  name: pg-eu
+  name: pg-eu-podmonitor
 spec:
   selector:
     matchLabels:
