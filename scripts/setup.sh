@@ -83,6 +83,9 @@ for region in "${REGIONS[@]}"; do
         "${MINIO_IMAGE}" server /data --console-address ":9001" > /dev/null
 
     echo "🏗️  Creating Kind cluster '${K8S_CLUSTER_NAME}'..."
+    if [ "$CONTAINER_PROVIDER" == "podman" ]; then
+        export KIND_EXPERIMENTAL_PROVIDER=podman
+    fi
     kind create cluster --config "${kind_config_path}" --name "${K8S_CLUSTER_NAME}"
 
     echo "🏷️  Labeling nodes in '${K8S_CLUSTER_NAME}'..."
