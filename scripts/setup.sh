@@ -80,6 +80,7 @@ for region in "${REGIONS[@]}"; do
         -v "${GIT_REPO_ROOT}/${MINIO_CONTAINER_NAME}:/data" \
         -e "MINIO_ROOT_USER=${MINIO_ROOT_USER}" -e "MINIO_ROOT_PASSWORD=${MINIO_ROOT_PASSWORD}" \
         -u "$(id -u):$(id -g)" \
+    	--restart unless-stopped \
         "${MINIO_IMAGE}" server /data --console-address ":9001" > /dev/null
 
     echo "🏗️  Creating Kind cluster '${K8S_CLUSTER_NAME}'..."
