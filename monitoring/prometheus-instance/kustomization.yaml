@@ -2,4 +2,6 @@ apiVersion: kustomize.config.k8s.io/v1beta1
 kind: Kustomization
 resources:
  - deploy_prometheus.yaml
+ # Fetch upstream recording rules from kube-prometheus
+ - https://raw.githubusercontent.com/prometheus-operator/kube-prometheus/v0.16.0/manifests/kubernetesControlPlane-prometheusRule.yaml
 namespace: prometheus-operator
