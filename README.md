@@ -45,7 +45,7 @@ These tools streamline working with the CNPG Playground.
 This environment emulates a two-region infrastructure (EU and US), with each
 region containing:
 
-- An object storage service powered by [MinIO](https://min.io/) containers
+- An object storage service powered by [RustFS](https://rustfs.com/) containers
 - A Kubernetes cluster, deployed using [Kind](https://kind.sigs.k8s.io/),
   consisting of:
 

@@ -3,7 +3,7 @@
 # This script sets up a simulated environment for deploying CloudNativePG
 # across two regions: Europe and the USA. Each region includes its own
 # Kubernetes cluster and a dedicated object storage system for backups,
-# using an external MinIO instance in Docker to emulate an S3-compatible
+# using an external RustFS instance in Docker to emulate an S3-compatible
 # object store.
 #
 # The Kubernetes clusters in each region consist of multiple nodes, each with
@@ -61,9 +61,9 @@ export KUBECONFIG="${KUBE_CONFIG_PATH}"
 cd "${GIT_REPO_ROOT}"
 kind_config_path="${GIT_REPO_ROOT}/k8s/kind-cluster.yaml"
 
-# --- Phase 1: Provision Clusters and MinIO Instances ---
-let "current_minio_port = MINIO_BASE_PORT"
-declare -A minio_ports
+# --- Phase 1: Provision Clusters and RustFS Instances ---
+let "current_objectstore_port = RUSTFS_BASE_PORT"
+declare -A objectstore_ports
 
 for region in "${REGIONS[@]}"; do
     echo "--------------------------------------------------"
@@ -71,17 +71,18 @@ for region in "${REGIONS[@]}"; do
     echo "--------------------------------------------------"
 
     K8S_CLUSTER_NAME=$(get_cluster_name "${region}")
-    MINIO_CONTAINER_NAME="${MINIO_BASE_NAME}-${region}"
+    RUSTFS_CONTAINER_NAME="${RUSTFS_BASE_NAME}-${region}"
 
-    echo "📦 Creating MinIO container '${MINIO_CONTAINER_NAME}' on host port ${current_minio_port}..."
-    mkdir -p "${GIT_REPO_ROOT}/${MINIO_CONTAINER_NAME}"
+    echo "📦 Creating RustFS container '${RUSTFS_CONTAINER_NAME}' on host port ${current_objectstore_port}..."
+    mkdir -p "${GIT_REPO_ROOT}/${RUSTFS_CONTAINER_NAME}"
     $CONTAINER_PROVIDER run \
-        --name "${MINIO_CONTAINER_NAME}" -d -p "${current_minio_port}:9001" \
-        -v "${GIT_REPO_ROOT}/${MINIO_CONTAINER_NAME}:/data" \
-        -e "MINIO_ROOT_USER=${MINIO_ROOT_USER}" -e "MINIO_ROOT_PASSWORD=${MINIO_ROOT_PASSWORD}" \
-        -u "$(id -u):$(id -g)" \
+        --name "${RUSTFS_CONTAINER_NAME}" -d -p "${current_objectstore_port}:9001" \
+        -v "${GIT_REPO_ROOT}/${RUSTFS_CONTAINER_NAME}:/data" \
+        -e "RUSTFS_ACCESS_KEY=${RUSTFS_ROOT_USER}" \
+        -e "RUSTFS_SECRET_KEY=${RUSTFS_ROOT_PASSWORD}" \
+        -e RUSTFS_CONSOLE_ENABLE=true \
     	--restart unless-stopped \
-        "${MINIO_IMAGE}" server /data --console-address ":9001" > /dev/null
+        "${RUSTFS_IMAGE}" --console-enable /data
 
     echo "🏗️  Creating Kind cluster '${K8S_CLUSTER_NAME}'..."
     if [ "$CONTAINER_PROVIDER" == "podman" ]; then
@@ -94,32 +95,32 @@ for region in "${REGIONS[@]}"; do
     kubectl label node -l infra.node.kubernetes.io node-role.kubernetes.io/infra=
     kubectl label node -l app.node.kubernetes.io node-role.kubernetes.io/app=
 
-    echo "🌐 Connecting MinIO to the Kind network..."
-    $CONTAINER_PROVIDER network connect kind "${MINIO_CONTAINER_NAME}"
+    echo "🌐 Connecting RustFS to the Kind network..."
+    $CONTAINER_PROVIDER network connect kind "${RUSTFS_CONTAINER_NAME}"
 
     echo "✅ Resource provisioning for '${region}' complete."
 
     # Store details for the next phase
-    minio_ports["${region}"]="${current_minio_port}"
-    all_minio_names+=("${MINIO_CONTAINER_NAME}")
-    ((current_minio_port++))
+    objectstore_ports["${region}"]="${current_objectstore_port}"
+    all_objectstore_names+=("${RUSTFS_CONTAINER_NAME}")
+    ((current_objectstore_port++))
 done
 
-# --- Phase 2: Distribute MinIO Secrets to all Clusters ---
+# --- Phase 2: Distribute RustFS Secrets to all Clusters ---
 echo
 echo "--------------------------------------------------"
-echo "🔑 Distributing MinIO secrets to all clusters"
+echo "🔑 Distributing RustFS secrets to all clusters"
 echo "--------------------------------------------------"
 for target_region in "${REGIONS[@]}"; do
     target_cluster_context=$(get_cluster_context "${target_region}")
     echo "   -> Configuring secrets in cluster: ${target_cluster_context}"
 
-    for source_minio_name in "${all_minio_names[@]}"; do
-        echo "      - Creating secret for ${source_minio_name}"
-        kubectl create secret generic "${source_minio_name}" \
+    for source_objectstore_name in "${all_objectstore_names[@]}"; do
+        echo "      - Creating secret for ${source_objectstore_name}"
+        kubectl create secret generic "${source_objectstore_name}" \
             --context "${target_cluster_context}" \
-            --from-literal=ACCESS_KEY_ID="$MINIO_ROOT_USER" \
-            --from-literal=ACCESS_SECRET_KEY="$MINIO_ROOT_PASSWORD"
+            --from-literal=ACCESS_KEY_ID="$RUSTFS_ROOT_USER" \
+            --from-literal=ACCESS_SECRET_KEY="$RUSTFS_ROOT_PASSWORD"
     done
 done
 

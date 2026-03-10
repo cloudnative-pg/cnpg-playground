@@ -26,7 +26,7 @@ To follow this demonstration, ensure the following are installed on your system:
 
 2. **`cmctl` (cert-manager CLI)**: Required for secure communication between
   the operator and the `barman-cloud` plugin, which is used for backup and
-  recovery with MinIO object stores.
+  recovery with RustFS object stores.
   Follow the [official `cmctl` installation guide](https://cert-manager.io/docs/reference/cmctl/#installation).
   For detailed guidance, refer to the official
   [`cert-manager` installation documentation](https://cert-manager.io/docs/installation/).
