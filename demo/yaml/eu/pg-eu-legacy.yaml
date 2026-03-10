@@ -47,13 +47,13 @@ spec:
   backup:
     barmanObjectStore:
       destinationPath: s3://backups/
-      endpointURL: http://minio-eu:9000
+      endpointURL: http://objectstore-eu:9000
       s3Credentials:
         accessKeyId:
-          name: minio-eu
+          name: objectstore-eu
           key: ACCESS_KEY_ID
         secretAccessKey:
-          name: minio-eu
+          name: objectstore-eu
           key: ACCESS_SECRET_KEY
       wal:
         compression: gzip
@@ -69,13 +69,13 @@ spec:
     barmanObjectStore:
       serverName: pg-eu
       destinationPath: s3://backups/
-      endpointURL: http://minio-eu:9000
+      endpointURL: http://objectstore-eu:9000
       s3Credentials:
         accessKeyId:
-          name: minio-eu
+          name: objectstore-eu
           key: ACCESS_KEY_ID
         secretAccessKey:
-          name: minio-eu
+          name: objectstore-eu
           key: ACCESS_SECRET_KEY
       wal:
         compression: gzip
@@ -83,13 +83,13 @@ spec:
     barmanObjectStore:
       serverName: pg-us
       destinationPath: s3://backups/
-      endpointURL: http://minio-us:9000
+      endpointURL: http://objectstore-us:9000
       s3Credentials:
         accessKeyId:
-          name: minio-us
+          name: objectstore-us
           key: ACCESS_KEY_ID
         secretAccessKey:
-          name: minio-us
+          name: objectstore-us
           key: ACCESS_SECRET_KEY
       wal:
         compression: gzip

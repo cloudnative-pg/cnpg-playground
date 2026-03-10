@@ -61,6 +61,6 @@ for region in eu us; do
      kubectl --context ${CONTEXT_NAME} delete --ignore-not-found=true -f -
 
    # Remove backup data
-   docker exec minio-${region} rm -rf /data/backups/pg-${region}
+   docker exec objectstore-${region} rm -rf /data/backups/pg-${region}
 
 done

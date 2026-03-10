@@ -48,7 +48,7 @@ spec:
   - name: barman-cloud.cloudnative-pg.io
     isWALArchiver: true
     parameters:
-      barmanObjectName: minio-us
+      barmanObjectName: objectstore-us
       serverName: pg-us
 
   # See https://cloudnative-pg.io/documentation/current/replica_cluster/#distributed-topology
@@ -62,13 +62,13 @@ spec:
     plugin:
       name: barman-cloud.cloudnative-pg.io
       parameters:
-        barmanObjectName: minio-eu
+        barmanObjectName: objectstore-eu
         serverName: pg-eu
   - name: pg-us
     plugin:
       name: barman-cloud.cloudnative-pg.io
       parameters:
-        barmanObjectName: minio-us
+        barmanObjectName: objectstore-us
         serverName: pg-us
 ---
 # See https://cloudnative-pg.io/documentation/current/backup/#scheduled-backups
