@@ -28,6 +28,3 @@
 
 # Go workspace file
 go.work
-
-# objectstore data directories
-objectstore-*

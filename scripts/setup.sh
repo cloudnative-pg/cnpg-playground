@@ -64,6 +64,7 @@ kind_config_path="${GIT_REPO_ROOT}/k8s/kind-cluster.yaml"
 # --- Phase 1: Provision Clusters and RustFS Instances ---
 let "current_objectstore_port = RUSTFS_BASE_PORT"
 declare -A objectstore_ports
+declare -a all_objectstore_names=()
 
 for region in "${REGIONS[@]}"; do
     echo "--------------------------------------------------"
@@ -74,14 +75,14 @@ for region in "${REGIONS[@]}"; do
     RUSTFS_CONTAINER_NAME="${RUSTFS_BASE_NAME}-${region}"
 
     echo "📦 Creating RustFS container '${RUSTFS_CONTAINER_NAME}' on host port ${current_objectstore_port}..."
-    mkdir -p "${GIT_REPO_ROOT}/${RUSTFS_CONTAINER_NAME}"
+    $CONTAINER_PROVIDER volume create "${RUSTFS_CONTAINER_NAME}" > /dev/null
     $CONTAINER_PROVIDER run \
         --name "${RUSTFS_CONTAINER_NAME}" -d -p "${current_objectstore_port}:9001" \
-        -v "${GIT_REPO_ROOT}/${RUSTFS_CONTAINER_NAME}:/data" \
+        -v "${RUSTFS_CONTAINER_NAME}:/data" \
         -e "RUSTFS_ACCESS_KEY=${RUSTFS_ROOT_USER}" \
         -e "RUSTFS_SECRET_KEY=${RUSTFS_ROOT_PASSWORD}" \
         -e RUSTFS_CONSOLE_ENABLE=true \
-    	--restart unless-stopped \
+        --restart unless-stopped \
         "${RUSTFS_IMAGE}" --console-enable /data
 
     echo "🏗️  Creating Kind cluster '${K8S_CLUSTER_NAME}'..."
