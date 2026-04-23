@@ -1,0 +1,27 @@
+  postgresql:
+    # See https://cloudnative-pg.io/documentation/current/postgresql_conf/#the-postgresql-section
+    parameters:
+      max_connections: '100'
+      log_checkpoints: 'on'
+      log_lock_waits: 'on'
+      pg_stat_statements.max: '10000'
+      pg_stat_statements.track: 'all'
+      hot_standby_feedback: 'on'
+      # Container images work fine with sysv shared memory
+      shared_memory_type: 'sysv'
+      dynamic_shared_memory_type: 'sysv'
+
+  backup:
+    barmanObjectStore:
+      destinationPath: s3://backups/
+      endpointURL: http://objectstore-${REGION}:9000
+      s3Credentials:
+        accessKeyId:
+          name: objectstore-${REGION}
+          key: ACCESS_KEY_ID
+        secretAccessKey:
+          name: objectstore-${REGION}
+          key: ACCESS_SECRET_KEY
+      wal:
+        compression: gzip
+

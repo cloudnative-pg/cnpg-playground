@@ -1,0 +1,15 @@
+---
+# See https://cloudnative-pg.io/documentation/current/backup/#scheduled-backups
+apiVersion: postgresql.cnpg.io/v1
+kind: ScheduledBackup
+metadata:
+  name: pg-${REGION}-backup
+spec:
+  method: plugin
+  schedule: '0 0 0 * * *'
+  backupOwnerReference: self
+  cluster:
+    name: pg-${REGION}
+  pluginConfiguration:
+    name: barman-cloud.cloudnative-pg.io
+  immediate: true

@@ -26,41 +26,49 @@ set -ux
 git_repo_root=$(git rev-parse --show-toplevel)
 
 # Source the common setup script
-source ${git_repo_root}/scripts/common.sh
+source "${git_repo_root}/scripts/common.sh"
 
-kube_config_path=${git_repo_root}/k8s/kube-config.yaml
-demo_yaml_path=${git_repo_root}/demo/yaml
+kube_config_path="${git_repo_root}/k8s/kube-config.yaml"
 
 # Setup a separate Kubeconfig
 cd "${git_repo_root}"
-export KUBECONFIG=${kube_config_path}
+export KUBECONFIG="${kube_config_path}"
 
-# Delete deployment, one region at a time
-for region in eu us; do
+# Detect or use the provided regions
+detect_running_regions "$@"
 
-   CONTEXT_NAME=$(get_cluster_context "${region}")
+for region in "${REGIONS[@]}"; do
 
-   # Delete the Postgres cluster
-   kubectl delete --context ${CONTEXT_NAME} --ignore-not-found=true -f \
-     ${demo_yaml_path}/${region}
+    CONTEXT_NAME=$(get_cluster_context "${region}")
 
-   # Delete Barman object stores
-   kubectl delete --context ${CONTEXT_NAME} --ignore-not-found=true -f \
-     ${demo_yaml_path}/object-stores
+    # Delete the Postgres cluster and its scheduled backup
+    kubectl delete --context "${CONTEXT_NAME}" --ignore-not-found=true \
+        cluster/pg-${region} \
+        scheduledbackup/pg-${region}-backup
 
-   # Delete Barman Cloud Plugin
-   kubectl delete --context ${CONTEXT_NAME} --ignore-not-found=true -f \
-      https://github.com/cloudnative-pg/plugin-barman-cloud/releases/latest/download/manifest.yaml
+    # Delete the PodMonitor if Prometheus CRDs are present
+    if kubectl --context "${CONTEXT_NAME}" get crd podmonitors.monitoring.coreos.com &>/dev/null; then
+        kubectl delete --context "${CONTEXT_NAME}" --ignore-not-found=true \
+            podmonitor/pg-${region}-podmonitor
+    fi
 
-   # Delete cert-manager
-   kubectl delete --context ${CONTEXT_NAME} --ignore-not-found=true -f \
-      https://github.com/cert-manager/cert-manager/releases/latest/download/cert-manager.yaml
+    # Delete the Barman ObjectStore CR
+    kubectl delete --context "${CONTEXT_NAME}" --ignore-not-found=true \
+        objectstore/objectstore-${region}
 
-   # Delete CNPG operator
-   kubectl cnpg install generate --control-plane | \
-     kubectl --context ${CONTEXT_NAME} delete --ignore-not-found=true -f -
+    # Delete Barman Cloud Plugin
+    kubectl delete --context "${CONTEXT_NAME}" --ignore-not-found=true -f \
+        https://github.com/cloudnative-pg/plugin-barman-cloud/releases/latest/download/manifest.yaml
 
-   # Remove backup data
-   docker exec objectstore-${region} rm -rf /data/backups/pg-${region}
+    # Delete cert-manager
+    kubectl delete --context "${CONTEXT_NAME}" --ignore-not-found=true -f \
+        https://github.com/cert-manager/cert-manager/releases/latest/download/cert-manager.yaml
+
+    # Delete CNPG operator
+    kubectl cnpg install generate --control-plane | \
+        kubectl --context "${CONTEXT_NAME}" delete --ignore-not-found=true -f -
+
+    # Remove backup data from the object store container
+    ${CONTAINER_PROVIDER} exec objectstore-${region} rm -rf /data/backups/pg-${region}
 
 done

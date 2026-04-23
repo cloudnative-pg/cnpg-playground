@@ -32,25 +32,6 @@ export KUBECONFIG="${KUBE_CONFIG_PATH}"
 # --- Auto-detect Regions ---
 detect_running_regions
 
-# --- Access Instructions ---
-echo
-echo "--------------------------------------------------"
-echo "🕹️  Cluster Access Instructions"
-echo "--------------------------------------------------"
-echo
-echo "To access your playground clusters, first set the KUBECONFIG environment variable:"
-echo "export KUBECONFIG=${KUBE_CONFIG_PATH}"
-echo
-echo "Available cluster contexts:"
-for region in "${REGIONS[@]}"; do
-    CONTEXT_NAME=$(get_cluster_context "${region}")
-    echo "  • ${CONTEXT_NAME}"
-done
-echo
-echo "To switch to a specific cluster (e.g., the '${REGIONS[0]}' region), use:"
-echo "kubectl config use-context $(get_cluster_context ${REGIONS[0]})"
-echo
-
 # --- Main Info Loop ---
 echo "--------------------------------------------------"
 echo "ℹ️  Cluster Information"
@@ -70,3 +51,22 @@ for region in "${REGIONS[@]}"; do
     echo "🔹 Secrets:"
     kubectl --context "${CONTEXT_NAME}" get secrets
 done
+
+# --- Access Instructions ---
+echo
+echo "--------------------------------------------------"
+echo "🕹️  Cluster Access Instructions"
+echo "--------------------------------------------------"
+echo
+echo "To access your playground clusters, first set the KUBECONFIG environment variable:"
+echo "export KUBECONFIG=${KUBE_CONFIG_PATH}"
+echo
+echo "Available cluster contexts:"
+for region in "${REGIONS[@]}"; do
+    CONTEXT_NAME=$(get_cluster_context "${region}")
+    echo "  • ${CONTEXT_NAME}"
+done
+echo
+echo "To switch to a specific cluster (e.g., the '${REGIONS[0]}' region), use:"
+echo "kubectl config use-context $(get_cluster_context ${REGIONS[0]})"
+echo

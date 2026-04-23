@@ -1,0 +1,27 @@
+apiVersion: postgresql.cnpg.io/v1
+kind: Cluster
+metadata:
+  name: pg-${REGION}
+spec:
+  instances: 3
+  imageName: ${POSTGRESQL_IMAGE}
+
+  storage:
+    size: 1Gi
+
+  # See https://cloudnative-pg.io/documentation/current/storage/#volume-for-wal
+  walStorage:
+    size: 1Gi
+
+  # See https://cloudnative-pg.io/documentation/current/scheduling/#isolating-postgresql-workloads
+  affinity:
+    nodeSelector:
+      node-role.kubernetes.io/postgres: ""
+    tolerations:
+    - key: node-role.kubernetes.io/postgres
+      operator: Exists
+      effect: NoSchedule
+    enablePodAntiAffinity: true
+    topologyKey: kubernetes.io/hostname
+    podAntiAffinityType: required
+
