@@ -249,6 +249,14 @@ for region in "${REGIONS[@]}"; do
     fi
 
     if ! ${dry_run}; then
+        if check_crd_existence "${CONTEXT_NAME}" clusters.postgresql.cnpg.io; then
+            echo "❌ CloudNativePG is already deployed in region '${region}' (context: ${CONTEXT_NAME})."
+            echo "   Run './demo/teardown.sh' first if you want to redeploy."
+            exit 1
+        fi
+    fi
+
+    if ! ${dry_run}; then
         if [ "${trunk}" -eq 1 ]; then
             # Deploy CloudNativePG operator (trunk - main branch)
             curl -sSfL \
