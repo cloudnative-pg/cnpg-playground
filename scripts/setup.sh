@@ -34,6 +34,13 @@ source "$(dirname "$0")/common.sh"
 
 echo "✅ Prerequisites met. Using '$CONTAINER_PROVIDER' as the container provider."
 
+format_duration() {
+    local s=$1
+    printf "%dm %02ds" $((s / 60)) $((s % 60))
+}
+
+total_start=$SECONDS
+
 # --- Pre-flight Check ---
 echo "🔎 Verifying that no existing playground clusters are running..."
 # The '|| true' prevents the script from exiting if grep finds no matches.
@@ -70,6 +77,7 @@ for region in "${REGIONS[@]}"; do
     echo "--------------------------------------------------"
     echo "🚀 Provisioning resources for region: ${region}"
     echo "--------------------------------------------------"
+    region_start=$SECONDS
 
     K8S_CLUSTER_NAME=$(get_cluster_name "${region}")
     RUSTFS_CONTAINER_NAME="${RUSTFS_BASE_NAME}-${region}"
@@ -99,7 +107,19 @@ for region in "${REGIONS[@]}"; do
     echo "🌐 Connecting RustFS to the Kind network..."
     $CONTAINER_PROVIDER network connect kind "${RUSTFS_CONTAINER_NAME}"
 
-    echo "✅ Resource provisioning for '${region}' complete."
+    echo "⏳ Waiting for '${RUSTFS_CONTAINER_NAME}' to be reachable on port 9000 from within the Kind network..."
+    elapsed=0
+    until $CONTAINER_PROVIDER exec "${K8S_CLUSTER_NAME}-control-plane" \
+        bash -c "echo >/dev/tcp/${RUSTFS_CONTAINER_NAME}/9000" 2>/dev/null; do
+        if [ "${elapsed}" -ge 60 ]; then
+            echo "❌ Timed out: '${RUSTFS_CONTAINER_NAME}' is not reachable from '${K8S_CLUSTER_NAME}' after 60s."
+            exit 1
+        fi
+        sleep 2
+        ((elapsed += 2))
+    done
+
+    echo "✅ Resource provisioning for '${region}' complete in $(format_duration $((SECONDS - region_start)))."
 
     # Store details for the next phase
     objectstore_ports["${region}"]="${current_objectstore_port}"
@@ -125,7 +145,33 @@ for target_region in "${REGIONS[@]}"; do
     done
 done
 
+# --- Phase 3: Verify Cross-Region Object Store Connectivity ---
+echo
+echo "--------------------------------------------------"
+echo "🌐 Verifying cross-region object store connectivity"
+echo "--------------------------------------------------"
+for region in "${REGIONS[@]}"; do
+    K8S_CLUSTER_NAME=$(get_cluster_name "${region}")
+    for objectstore_name in "${all_objectstore_names[@]}"; do
+        echo -n "   ⏳ ${K8S_CLUSTER_NAME} -> ${objectstore_name}:9000 ... "
+        elapsed=0
+        until $CONTAINER_PROVIDER exec "${K8S_CLUSTER_NAME}-control-plane" \
+            bash -c "echo >/dev/tcp/${objectstore_name}/9000" 2>/dev/null; do
+            if [ "${elapsed}" -ge 60 ]; then
+                echo "❌ FAIL"
+                echo "❌ Timed out: '${objectstore_name}' is not reachable from '${K8S_CLUSTER_NAME}' after 60s."
+                exit 1
+            fi
+            sleep 2
+            ((elapsed += 2))
+        done
+        echo "✅ OK"
+    done
+done
+
 # --- Final Instructions ---
+echo
+echo "⏱️  Total setup time: $(format_duration $((SECONDS - total_start)))."
 echo
 # Display information using the info script
 source "$(dirname "$0")/info.sh"

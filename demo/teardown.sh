@@ -21,7 +21,8 @@
 # limitations under the License.
 #
 
-set -ux
+set -u
+[[ "${DEBUG:-false}" == "true" ]] && set -x
 
 git_repo_root=$(git rev-parse --show-toplevel)
 

@@ -83,6 +83,13 @@ regions, pass them as arguments:
 ./demo/setup.sh eu us asia
 ```
 
+> [!NOTE]
+> When regions are auto-detected (no arguments given), they are sorted
+> alphabetically. The circular replication chain is built in that order,
+> with the first region becoming the primary. If you need a specific primary
+> or a particular streaming order, pass the regions explicitly on the
+> command line.
+
 This process takes a few minutes to complete.
 It installs the latest version of CloudNativePG, cert-manager, and the
 [Barman Cloud plugin](https://cloudnative-pg.io/plugin-barman-cloud/),
@@ -101,6 +108,7 @@ followed by the deployment of the PostgreSQL clusters.
 | `POSTGRESQL_LEGACY_IMAGE=<image>` | `ghcr.io/cloudnative-pg/postgresql:18-system-trixie` | PostgreSQL image used in legacy mode |
 | `K8S_CONTEXT_PREFIX` | `kind-` | Prefix of kubectl context names; override when targeting non-Kind clusters |
 | `K8S_NAME` | `k8s-` | Base name of clusters in kubectl context names |
+| `DEBUG=true` | `false` | Enable shell trace output (`set -x`) for debugging |
 
 The last two variables are useful when deploying the demo against existing
 Kubernetes clusters rather than the Kind clusters created by

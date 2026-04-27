@@ -9,6 +9,7 @@
 #   ./demo/setup.sh [regions...]    # specify regions (auto-detects running clusters if omitted)
 #   LEGACY=true ./demo/setup.sh     # use in-tree Barman backup instead of plugin
 #   TRUNK=true  ./demo/setup.sh     # deploy from main branch (CNPG + Barman plugin)
+#   DEBUG=true  ./demo/setup.sh     # enable shell trace output (set -x)
 #
 # Note: This environment is for learning purposes only and should not be
 # used in production.
@@ -29,7 +30,8 @@
 # limitations under the License.
 #
 
-set -eux
+set -eu
+[[ "${DEBUG:-false}" == "true" ]] && set -x
 
 git_repo_root=$(git rev-parse --show-toplevel)
 
@@ -90,6 +92,11 @@ done
 detect_running_regions "$@"
 primary_region="${REGIONS[0]}"
 num_regions=${#REGIONS[@]}
+
+format_duration() {
+    local s=$1
+    printf "%dm %02ds" $((s / 60)) $((s % 60))
+}
 
 # Return the replica source for a given region in the circular chain.
 # For a ring [r0, r1, ..., rN-1]:
@@ -229,9 +236,12 @@ generate_cluster_yaml_legacy() {
 cd "${git_repo_root}"
 export KUBECONFIG="${kube_config_path}"
 
+total_start=$SECONDS
+
 for region in "${REGIONS[@]}"; do
 
     CONTEXT_NAME=$(get_cluster_context "${region}")
+    region_start=$SECONDS
 
     # Initialise the per-region output file (clears any previous run)
     if [ -n "${output_dir}" ]; then
@@ -310,6 +320,13 @@ for region in "${REGIONS[@]}"; do
         kubectl wait --context "${CONTEXT_NAME}" \
             --timeout 30m \
             --for=condition=Ready cluster/pg-${region}
+
+        echo "✅ Demo deployment for '${region}' complete in $(format_duration $((SECONDS - region_start)))."
     fi
 
 done
+
+if ! ${dry_run}; then
+    echo
+    echo "⏱️  Total demo setup time: $(format_duration $((SECONDS - total_start)))."
+fi
