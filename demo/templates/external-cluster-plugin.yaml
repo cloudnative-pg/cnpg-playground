@@ -1,0 +1,6 @@
+  - name: pg-${REGION}
+    plugin:
+      name: barman-cloud.cloudnative-pg.io
+      parameters:
+        barmanObjectName: objectstore-${REGION}
+        serverName: pg-${REGION}

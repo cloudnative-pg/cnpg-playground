@@ -1,0 +1,5 @@
+  # See https://cloudnative-pg.io/documentation/current/recovery/
+  bootstrap:
+    recovery:
+      source: pg-${PRIMARY_REGION}
+
