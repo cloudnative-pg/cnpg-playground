@@ -19,116 +19,326 @@
 ##
 
 #
-# This script deploys CloudNativePG in two regions and sets up a PostgreSQL
-# example cluster using a distributed topology. The configuration leverages
-# state synchronization with S3 object storage.
+# This script deploys CloudNativePG in one or more regions and sets up
+# PostgreSQL clusters using either a standalone configuration (single region)
+# or a distributed topology (multiple regions, circular replica chain).
+# State synchronization is managed via S3 object storage backed by RustFS.
 #
-# Note: This environment is for learning purposes only and should not be used
-# in production.
+# Usage:
+#   ./demo/setup.sh [regions...]    # specify regions (auto-detects running clusters if omitted)
+#   LEGACY=true ./demo/setup.sh     # use in-tree Barman backup instead of plugin
+#   TRUNK=true  ./demo/setup.sh     # deploy from main branch (CNPG + Barman plugin)
+#   DEBUG=true  ./demo/setup.sh     # enable shell trace output (set -x)
+#
+# Note: This environment is for learning purposes only and should not be
+# used in production.
 #
 
-set -eux
+set -eu
+[[ "${DEBUG:-false}" == "true" ]] && set -x
 
 git_repo_root=$(git rev-parse --show-toplevel)
 
 # Source the common setup script
-source ${git_repo_root}/scripts/common.sh
+source "${git_repo_root}/scripts/common.sh"
 
-kube_config_path=${git_repo_root}/k8s/kube-config.yaml
-demo_yaml_path=${git_repo_root}/demo/yaml
+kube_config_path="${git_repo_root}/k8s/kube-config.yaml"
+templates_dir="${git_repo_root}/demo/templates"
+legacy_templates_dir="${templates_dir}/legacy"
 
+# Default PostgreSQL image (overridable via env var)
+POSTGRESQL_IMAGE="${POSTGRESQL_IMAGE:-ghcr.io/cloudnative-pg/postgresql:18-standard-trixie}"
+POSTGRESQL_LEGACY_IMAGE="${POSTGRESQL_LEGACY_IMAGE:-ghcr.io/cloudnative-pg/postgresql:18-system-trixie}"
+
+# Check whether a CRD exists in the given cluster context
 check_crd_existence() {
-    # Check if the CRD exists in the cluster
-    kubectl get crd "$1" &> /dev/null
-    return $?
+    local context="$1"
+    local crd="$2"
+    kubectl --context "${context}" get crd "${crd}" &>/dev/null
 }
 
-legacy=
+legacy=false
 if [ "${LEGACY:-}" = "true" ]; then
-   legacy="-legacy"
+    legacy=true
 fi
 
 trunk=0
 if [ "${TRUNK:-}" = "true" ]; then
-   trunk=1
+    trunk=1
+fi
+
+dry_run=false
+if [ "${DRY_RUN:-}" = "true" ]; then
+    dry_run=true
+fi
+
+output_dir=""
+if [ -n "${OUTPUT_DIR:-}" ]; then
+    output_dir="${OUTPUT_DIR}"
+    mkdir -p "${output_dir}"
+fi
+
+# Disable trace only when DRY_RUN prints to stdout (i.e. OUTPUT_DIR is not set),
+# so that the YAML output is not polluted by the trace.
+if ${dry_run} && [ -z "${output_dir}" ]; then
+    set +x
 fi
 
 # Ensure prerequisites are met
-prereqs="kubectl kubectl-cnpg cmctl"
-for cmd in $prereqs; do
-   if [ -z "$(which $cmd)" ]; then
-      echo "Missing command $cmd"
-      exit 1
-   fi
+for cmd in kubectl kubectl-cnpg cmctl envsubst; do
+    if ! command -v "${cmd}" &>/dev/null; then
+        echo "Missing command ${cmd}"
+        exit 1
+    fi
 done
 
-# Setup a separate Kubeconfig
+# Set regions from arguments, or auto-detect running playground clusters
+detect_running_regions "$@"
+primary_region="${REGIONS[0]}"
+num_regions=${#REGIONS[@]}
+
+format_duration() {
+    local s=$1
+    printf "%dm %02ds" $((s / 60)) $((s % 60))
+}
+
+# Return the replica source for a given region in the circular chain.
+# For a ring [r0, r1, ..., rN-1]:
+#   source(r0) = rN-1  (the primary wraps around to the last region)
+#   source(ri) = r(i-1)
+get_source_region() {
+    local target="$1"
+    local prev="${REGIONS[$((num_regions - 1))]}"
+    local r
+    for r in "${REGIONS[@]}"; do
+        if [ "${r}" = "${target}" ]; then
+            echo "${prev}"
+            return
+        fi
+        prev="${r}"
+    done
+}
+
+# Consume generated YAML from stdin, then:
+#   - append to ${output_dir}/${region}.yaml  if OUTPUT_DIR is set
+#   - print to stdout                         if DRY_RUN is true
+#   - apply to the cluster                    if DRY_RUN is false
+# The options compose: OUTPUT_DIR + DRY_RUN writes the file and prints to stdout.
+kubectl_apply() {
+    local input
+    input=$(cat)
+
+    if [ -n "${output_dir}" ]; then
+        # OUTPUT_DIR is set: write to file (DRY_RUN skips kubectl apply)
+        printf '%s\n---\n' "${input}" >> "${output_dir}/${region}.yaml"
+    elif ${dry_run}; then
+        # DRY_RUN without OUTPUT_DIR: print to stdout
+        printf '%s\n---\n' "${input}"
+    else
+        printf '%s\n' "${input}" | kubectl apply --context "${CONTEXT_NAME}" -f -
+    fi
+}
+
+# ---------------------------------------------------------------------------
+# YAML generators — each function writes a complete YAML stream to stdout.
+# The caller is responsible for piping to kubectl.
+# Template files use ${REGION}, ${PRIMARY_REGION}, ${SOURCE_REGION}, and
+# ${POSTGRESQL_IMAGE} as placeholders; envsubst substitutes only those
+# variables (explicit list prevents accidental expansion of env vars).
+# ---------------------------------------------------------------------------
+
+generate_objectstore_yaml() {
+    local region="$1"
+    REGION="${region}" \
+    envsubst '${REGION}' < "${templates_dir}/objectstore.yaml"
+}
+
+generate_podmonitor_yaml() {
+    local region="$1"
+    REGION="${region}" \
+    envsubst '${REGION}' < "${templates_dir}/podmonitor.yaml"
+}
+
+# Emit a Cluster + ScheduledBackup stream using the Barman Cloud Plugin
+generate_cluster_yaml_plugin() {
+    local region="$1"
+    local source_region
+    source_region=$(get_source_region "${region}")
+
+    # Cluster header: apiVersion through affinity
+    REGION="${region}" POSTGRESQL_IMAGE="${POSTGRESQL_IMAGE}" \
+    envsubst '${REGION} ${POSTGRESQL_IMAGE}' < "${templates_dir}/cluster-header.yaml"
+
+    # Bootstrap: initdb for the primary (or single-region); recovery for replicas
+    if [ "${region}" = "${primary_region}" ] || [ "${num_regions}" -eq 1 ]; then
+        cat "${templates_dir}/bootstrap-initdb.yaml"
+    else
+        PRIMARY_REGION="${primary_region}" \
+        envsubst '${PRIMARY_REGION}' < "${templates_dir}/bootstrap-recovery.yaml"
+    fi
+
+    # PostgreSQL parameters and Barman Cloud Plugin configuration
+    REGION="${region}" \
+    envsubst '${REGION}' < "${templates_dir}/cluster-plugin-params.yaml"
+
+    # Distributed topology replica section — only for multi-region setups
+    if [ "${num_regions}" -gt 1 ]; then
+        REGION="${region}" PRIMARY_REGION="${primary_region}" SOURCE_REGION="${source_region}" \
+        envsubst '${REGION} ${PRIMARY_REGION} ${SOURCE_REGION}' < "${templates_dir}/replica-section.yaml"
+    fi
+
+    # External cluster references — one entry per region
+    printf '  externalClusters:\n'
+    local r
+    for r in "${REGIONS[@]}"; do
+        REGION="${r}" envsubst '${REGION}' < "${templates_dir}/external-cluster-plugin.yaml"
+    done
+
+    # ScheduledBackup document
+    REGION="${region}" \
+    envsubst '${REGION}' < "${templates_dir}/scheduledbackup-plugin.yaml"
+}
+
+# Emit a Cluster + ScheduledBackup stream using in-tree (legacy) Barman configuration
+generate_cluster_yaml_legacy() {
+    local region="$1"
+    local source_region
+    source_region=$(get_source_region "${region}")
+
+    REGION="${region}" POSTGRESQL_IMAGE="${POSTGRESQL_LEGACY_IMAGE}" \
+    envsubst '${REGION} ${POSTGRESQL_IMAGE}' < "${templates_dir}/cluster-header.yaml"
+
+    if [ "${region}" = "${primary_region}" ] || [ "${num_regions}" -eq 1 ]; then
+        cat "${templates_dir}/bootstrap-initdb.yaml"
+    else
+        PRIMARY_REGION="${primary_region}" \
+        envsubst '${PRIMARY_REGION}' < "${templates_dir}/bootstrap-recovery.yaml"
+    fi
+
+    REGION="${region}" \
+    envsubst '${REGION}' < "${legacy_templates_dir}/cluster-legacy-params.yaml"
+
+    if [ "${num_regions}" -gt 1 ]; then
+        REGION="${region}" PRIMARY_REGION="${primary_region}" SOURCE_REGION="${source_region}" \
+        envsubst '${REGION} ${PRIMARY_REGION} ${SOURCE_REGION}' < "${templates_dir}/replica-section.yaml"
+    fi
+
+    printf '  externalClusters:\n'
+    local r
+    for r in "${REGIONS[@]}"; do
+        REGION="${r}" envsubst '${REGION}' < "${legacy_templates_dir}/external-cluster-legacy.yaml"
+    done
+
+    REGION="${region}" \
+    envsubst '${REGION}' < "${legacy_templates_dir}/scheduledbackup-legacy.yaml"
+}
+
+# ---------------------------------------------------------------------------
+# Deployment
+# ---------------------------------------------------------------------------
+
 cd "${git_repo_root}"
-export KUBECONFIG=${kube_config_path}
+export KUBECONFIG="${kube_config_path}"
 
-# Begin deployment, one region at a time
-for region in eu us; do
+total_start=$SECONDS
 
-   CONTEXT_NAME=$(get_cluster_context "${region}")
+for region in "${REGIONS[@]}"; do
 
-   if [ $trunk -eq 1 ]
-   then
-     # Deploy CloudNativePG operator (trunk - main branch)
-     curl -sSfL \
-       https://raw.githubusercontent.com/cloudnative-pg/artifacts/main/manifests/operator-manifest.yaml | \
-       kubectl --context ${CONTEXT_NAME} apply -f - --server-side
-   else
-     # Deploy CloudNativePG operator (latest version, through the plugin)
-     kubectl cnpg install generate --control-plane | \
-       kubectl --context ${CONTEXT_NAME} apply -f - --server-side
-   fi
+    CONTEXT_NAME=$(get_cluster_context "${region}")
+    region_start=$SECONDS
 
-   # Wait for CNPG deployment to complete
-   kubectl --context ${CONTEXT_NAME} rollout status deployment \
-      -n cnpg-system cnpg-controller-manager
+    # Initialise the per-region output file (clears any previous run)
+    if [ -n "${output_dir}" ]; then
+        : > "${output_dir}/${region}.yaml"
+    fi
 
-   # Deploy cert-manager
-   kubectl apply --context ${CONTEXT_NAME} -f \
-      https://github.com/cert-manager/cert-manager/releases/latest/download/cert-manager.yaml
+    if ! ${dry_run}; then
+        if check_crd_existence "${CONTEXT_NAME}" clusters.postgresql.cnpg.io; then
+            echo "❌ CloudNativePG is already deployed in region '${region}' (context: ${CONTEXT_NAME})."
+            echo "   Run './demo/teardown.sh' first if you want to redeploy."
+            exit 1
+        fi
+    fi
 
-   # Wait for cert-manager deployment to complete
-   kubectl rollout --context ${CONTEXT_NAME} status deployment \
-      -n cert-manager
-   cmctl check api --wait=2m --context ${CONTEXT_NAME}
+    if ! ${dry_run}; then
+        if [ "${trunk}" -eq 1 ]; then
+            # Deploy CloudNativePG operator (trunk - main branch)
+            curl -sSfL \
+                https://raw.githubusercontent.com/cloudnative-pg/artifacts/main/manifests/operator-manifest.yaml | \
+                kubectl --context "${CONTEXT_NAME}" apply -f - --server-side
+        else
+            # Deploy CloudNativePG operator (latest version, through the plugin)
+            kubectl cnpg install generate --control-plane | \
+                kubectl --context "${CONTEXT_NAME}" apply -f - --server-side
+        fi
 
-   if [ $trunk -eq 1 ]
-   then
-     # Deploy Barman Cloud Plugin (trunk)
-     kubectl apply --context ${CONTEXT_NAME} -f \
-       https://raw.githubusercontent.com/cloudnative-pg/plugin-barman-cloud/refs/heads/main/manifest.yaml
-   else
-     # Deploy Barman Cloud Plugin (latest stable)
-     kubectl apply --context ${CONTEXT_NAME} -f \
-        https://github.com/cloudnative-pg/plugin-barman-cloud/releases/latest/download/manifest.yaml
-   fi
+        # Wait for CNPG deployment to complete
+        kubectl --context "${CONTEXT_NAME}" rollout status deployment \
+            -n cnpg-system cnpg-controller-manager
+        echo "📦 CloudNativePG: $(kubectl --context "${CONTEXT_NAME}" get deployment cnpg-controller-manager \
+            -n cnpg-system -o jsonpath='{.spec.template.spec.containers[0].image}')"
 
-   # Wait for Barman Cloud Plugin deployment to complete
-   kubectl rollout --context ${CONTEXT_NAME} status deployment \
-      -n cnpg-system barman-cloud
+        # Deploy cert-manager
+        kubectl apply --context "${CONTEXT_NAME}" -f \
+            https://github.com/cert-manager/cert-manager/releases/latest/download/cert-manager.yaml
 
-   # Create Barman object stores
-   kubectl apply --context ${CONTEXT_NAME} -f \
-     ${demo_yaml_path}/object-stores
+        # Wait for cert-manager deployment to complete
+        kubectl rollout --context "${CONTEXT_NAME}" status deployment \
+            -n cert-manager
+        cmctl check api --wait=2m --context "${CONTEXT_NAME}"
+        echo "📦 cert-manager: $(kubectl --context "${CONTEXT_NAME}" get deployment cert-manager \
+            -n cert-manager -o jsonpath='{.spec.template.spec.containers[0].image}')"
 
-   # Create the Postgres cluster
-   kubectl apply --context ${CONTEXT_NAME} -f \
-     ${demo_yaml_path}/${region}/pg-${region}${legacy}.yaml
+        if [ "${trunk}" -eq 1 ]; then
+            # Deploy Barman Cloud Plugin (trunk)
+            kubectl apply --context "${CONTEXT_NAME}" -f \
+                https://raw.githubusercontent.com/cloudnative-pg/plugin-barman-cloud/refs/heads/main/manifest.yaml
+        else
+            # Deploy Barman Cloud Plugin (latest stable)
+            kubectl apply --context "${CONTEXT_NAME}" -f \
+                https://github.com/cloudnative-pg/plugin-barman-cloud/releases/latest/download/manifest.yaml
+        fi
 
-   # Create the PodMonitor if Prometheus has been installed
-   if check_crd_existence podmonitors.monitoring.coreos.com
-   then
-     kubectl apply --context ${CONTEXT_NAME} -f \
-       ${demo_yaml_path}/${region}/pg-${region}-podmonitor.yaml
-   fi
+        # Wait for Barman Cloud Plugin deployment to complete
+        kubectl rollout --context "${CONTEXT_NAME}" status deployment \
+            -n cnpg-system barman-cloud
+        echo "📦 Barman Cloud Plugin: $(kubectl --context "${CONTEXT_NAME}" get deployment barman-cloud \
+            -n cnpg-system -o jsonpath='{.spec.template.spec.containers[0].image}')"
+    fi
 
-   # Wait for the cluster to be ready
-   kubectl wait --context ${CONTEXT_NAME} \
-     --timeout 30m \
-     --for=condition=Ready cluster/pg-${region}
+    # Create the Barman ObjectStore CRs for all regions (plugin mode only)
+    # Each cluster needs ObjectStores for all regions to support externalClusters references.
+    if ! ${legacy}; then
+        for r in "${REGIONS[@]}"; do
+            generate_objectstore_yaml "${r}" | kubectl_apply
+        done
+    fi
+
+    # Create the Postgres cluster (plugin or legacy mode)
+    if ${legacy}; then
+        generate_cluster_yaml_legacy "${region}"
+    else
+        generate_cluster_yaml_plugin "${region}"
+    fi | kubectl_apply
+
+    # Create the PodMonitor if Prometheus has been installed
+    # In dry-run mode always emit it; otherwise check for the CRD first
+    if ${dry_run} || check_crd_existence "${CONTEXT_NAME}" podmonitors.monitoring.coreos.com; then
+        generate_podmonitor_yaml "${region}" | kubectl_apply
+    fi
+
+    if ! ${dry_run}; then
+        # Wait for the cluster to be ready
+        kubectl wait --context "${CONTEXT_NAME}" \
+            --timeout 30m \
+            --for=condition=Ready cluster/pg-${region}
+
+        echo "✅ Demo deployment for '${region}' complete in $(format_duration $((SECONDS - region_start)))."
+    fi
 
 done
+
+if ! ${dry_run}; then
+    echo
+    echo "⏱️  Total demo setup time: $(format_duration $((SECONDS - total_start)))."
+fi

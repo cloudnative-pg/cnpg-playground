@@ -1,0 +1,5 @@
+  # See https://cloudnative-pg.io/documentation/current/bootstrap/#bootstrap-an-empty-cluster-initdb
+  bootstrap:
+    initdb:
+      dataChecksums: true
+

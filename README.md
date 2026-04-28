@@ -90,6 +90,26 @@ arguments.
 ./scripts/setup.sh local
 ```
 
+### Configuration
+
+The following environment variables can be set before running `setup.sh` to
+override the default playground configuration:
+
+| Variable | Default | Description |
+|----------|---------|-------------|
+| `RUSTFS_IMAGE` | `rustfs/rustfs:latest` | RustFS container image to use |
+| `RUSTFS_ROOT_USER` | `cnpg` | S3 access key for the RustFS instances |
+| `RUSTFS_ROOT_PASSWORD` | `Cl0udNativePGRocks` | S3 secret key for the RustFS instances |
+| `RUSTFS_BASE_PORT` | `9001` | Host port for the first RustFS console; increments by one per region |
+| `K8S_NAME` | `k8s-` | Base name used when creating Kind clusters |
+| `K8S_CONTEXT_PREFIX` | `kind-` | Prefix added to Kind cluster names to form kubectl context names |
+
+Example:
+
+```bash
+RUSTFS_ROOT_USER=myuser RUSTFS_ROOT_PASSWORD=mypassword ./scripts/setup.sh
+```
+
 ### Connecting to the Kubernetes Clusters
 
 To configure and interact with both Kubernetes clusters during the learning

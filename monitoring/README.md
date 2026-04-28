@@ -31,6 +31,25 @@ The script will automatically deploy Prometheus, Grafana, and the CloudNativePG 
 
 ---
 
+## Configuration
+
+The following environment variables can be set to override defaults:
+
+| Variable | Default | Description |
+|----------|---------|-------------|
+| `K8S_CONTEXT_PREFIX` | `kind-` | Prefix of kubectl context names; override when targeting non-Kind clusters |
+| `K8S_NAME` | `k8s-` | Base name of clusters in kubectl context names |
+
+These are useful when deploying monitoring against existing Kubernetes clusters
+rather than the Kind clusters created by `scripts/setup.sh`. For example, if
+your contexts are named `eu` and `us`, set both to empty strings:
+
+```bash
+K8S_CONTEXT_PREFIX="" K8S_NAME="" ./monitoring/setup.sh eu us
+```
+
+---
+
 ## Accessing the Dashboard
 
 Once installation completes, you can access Grafana via port forwarding.

@@ -1,0 +1,14 @@
+  - name: pg-${REGION}
+    barmanObjectStore:
+      serverName: pg-${REGION}
+      destinationPath: s3://backups/
+      endpointURL: http://objectstore-${REGION}:9000
+      s3Credentials:
+        accessKeyId:
+          name: objectstore-${REGION}
+          key: ACCESS_KEY_ID
+        secretAccessKey:
+          name: objectstore-${REGION}
+          key: ACCESS_SECRET_KEY
+      wal:
+        compression: gzip

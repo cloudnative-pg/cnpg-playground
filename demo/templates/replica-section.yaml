@@ -1,0 +1,6 @@
+  # See https://cloudnative-pg.io/documentation/current/replica_cluster/#distributed-topology
+  replica:
+    self: pg-${REGION}
+    primary: pg-${PRIMARY_REGION}
+    source: pg-${SOURCE_REGION}
+

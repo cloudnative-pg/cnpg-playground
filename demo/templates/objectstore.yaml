@@ -1,17 +1,17 @@
 apiVersion: barmancloud.cnpg.io/v1
 kind: ObjectStore
 metadata:
-  name: objectstore-us
+  name: objectstore-${REGION}
 spec:
   configuration:
     destinationPath: s3://backups/
-    endpointURL: http://objectstore-us:9000
+    endpointURL: http://objectstore-${REGION}:9000
     s3Credentials:
       accessKeyId:
-        name: objectstore-us
+        name: objectstore-${REGION}
         key: ACCESS_KEY_ID
       secretAccessKey:
-        name: objectstore-us
+        name: objectstore-${REGION}
         key: ACCESS_SECRET_KEY
     wal:
       compression: gzip
