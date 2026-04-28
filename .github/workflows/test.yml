@@ -1,0 +1,60 @@
+name: End-to-End Test
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+  workflow_dispatch:
+
+jobs:
+  end-to-end-tests:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45  # Increased to accommodate recording rules wait time
+    
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+      
+      - name: Move Docker data to larger disk
+        run: |
+          echo "=== Disk space ==="
+          df -h / /mnt | grep -E '(Filesystem|/dev)'
+          echo ""
+          echo "=== Stopping Docker ==="
+          sudo systemctl stop docker.socket docker.service containerd.service
+          echo ""
+          echo "=== Preparing /mnt for Docker data ==="
+          sudo mkdir -p /mnt/docker-data/docker /mnt/docker-data/containerd
+          echo ""
+          echo "=== Bind mounting to /mnt ==="
+          sudo mount --bind /mnt/docker-data/docker /var/lib/docker
+          sudo mount --bind /mnt/docker-data/containerd /var/lib/containerd
+          echo ""
+          echo "=== Starting Docker ==="
+          sudo systemctl start containerd.service docker.service
+          echo ""
+          echo "=== Verifying Docker works ==="
+          docker ps
+      
+      - name: Install Nix
+        uses: cachix/install-nix-action@v27
+        with:
+          nix_path: nixpkgs=channel:nixos-unstable
+      
+      - name: Show environment info
+        run: |
+          echo "=== System Info ==="
+          uname -a
+          echo "=== Docker Info ==="
+          docker version
+          echo "=== Available space ==="
+          df -h | head -5
+          echo "=== Nix version ==="
+          nix --version
+      
+      - name: Run test-1-setup.sh (15-20 min)
+        run: nix develop --command ./test-1-setup.sh
+      
+      - name: Run test-2-teardown.sh (10-15 min)
+        run: nix develop --command ./test-2-teardown.sh

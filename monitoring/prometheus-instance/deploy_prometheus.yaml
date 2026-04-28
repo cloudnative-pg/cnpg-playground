@@ -12,6 +12,7 @@ rules:
   resources:
   - nodes
   - nodes/metrics
+  - nodes/proxy
   - services
   - endpoints
   - pods
@@ -44,7 +45,7 @@ roleRef:
 subjects:
 - kind: ServiceAccount
   name: prometheus
-  namespace: default
+  namespace: prometheus-operator
 ---
 
 apiVersion: monitoring.coreos.com/v1
@@ -55,5 +56,9 @@ spec:
   serviceAccountName: prometheus
   podMonitorSelector: {}
   podMonitorNamespaceSelector: {}
+  serviceMonitorSelector: {}
+  serviceMonitorNamespaceSelector: {}
+  ruleSelector: {}
+  ruleNamespaceSelector: {}
   nodeSelector:
     node-role.kubernetes.io/infra: ""
