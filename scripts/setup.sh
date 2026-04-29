@@ -69,8 +69,8 @@ set_regions "$@"
 # Setup a single, shared Kubeconfig for all clusters
 export KUBECONFIG="${KUBE_CONFIG_PATH}"
 > "${KUBE_CONFIG_PATH}" # Create or clear the kubeconfig file
-cd "${GIT_REPO_ROOT}"
-kind_config_path="${GIT_REPO_ROOT}/k8s/kind-cluster.yaml"
+cd "${REPO_ROOT}"
+kind_config_path="${REPO_ROOT}/k8s/kind-cluster.yaml"
 
 # --- Phase 1: Provision Clusters and RustFS Instances ---
 let "current_objectstore_port = RUSTFS_BASE_PORT"

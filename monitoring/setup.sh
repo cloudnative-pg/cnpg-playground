@@ -28,7 +28,7 @@
 #
 
 # Source the common setup script
-source $(git rev-parse --show-toplevel)/scripts/common.sh
+source "$(cd "$(dirname "$0")/.." && pwd)/scripts/common.sh"
 
 # --- Main Logic ---
 # Determine regions from arguments, or auto-detect if none are provided
@@ -47,11 +47,11 @@ for region in "${REGIONS[@]}"; do
 
 # Deploy the Prometheus operator in the playground Kubernetes clusters
     kubectl --context ${CONTEXT_NAME} create ns prometheus-operator || true
-    kubectl kustomize ${GIT_REPO_ROOT}/monitoring/prometheus-operator | \
+    kubectl kustomize ${REPO_ROOT}/monitoring/prometheus-operator | \
       kubectl --context ${CONTEXT_NAME} apply --force-conflicts --server-side -f -
 
 # We make sure that monitoring workloads are deployed in the infrastructure node.
-    kubectl kustomize ${GIT_REPO_ROOT}/monitoring/prometheus-instance | \
+    kubectl kustomize ${REPO_ROOT}/monitoring/prometheus-instance | \
         kubectl --context=${CONTEXT_NAME} apply --force-conflicts --server-side -f -
     kubectl --context=${CONTEXT_NAME} -n prometheus-operator \
       patch deployment prometheus-operator \
@@ -71,7 +71,7 @@ for region in "${REGIONS[@]}"; do
       --patch='{"spec":{"template":{"spec":{"tolerations":[{"key":"node-role.kubernetes.io/infra","operator":"Exists","effect":"NoSchedule"}],"nodeSelector":{"node-role.kubernetes.io/infra":""}}}}}'
 
 # Creating Grafana instance and dashboards
-    kubectl kustomize ${GIT_REPO_ROOT}/monitoring/grafana/ | \
+    kubectl kustomize ${REPO_ROOT}/monitoring/grafana/ | \
       kubectl --context ${CONTEXT_NAME} apply -f -
 
 # Restart the operator
