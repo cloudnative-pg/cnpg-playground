@@ -37,13 +37,11 @@
 set -eu
 [[ "${DEBUG:-false}" == "true" ]] && set -x
 
-git_repo_root=$(git rev-parse --show-toplevel)
-
 # Source the common setup script
-source "${git_repo_root}/scripts/common.sh"
+source "$(cd "$(dirname "$0")/.." && pwd)/scripts/common.sh"
 
-kube_config_path="${git_repo_root}/k8s/kube-config.yaml"
-templates_dir="${TEMPLATES_DIR:-${git_repo_root}/demo/templates}"
+kube_config_path="${KUBE_CONFIG_PATH}"
+templates_dir="${TEMPLATES_DIR:-${REPO_ROOT}/demo/templates}"
 legacy_templates_dir="${templates_dir}/legacy"
 
 # Default PostgreSQL image (overridable via env var)
@@ -251,7 +249,7 @@ generate_cluster_yaml_legacy() {
 # Deployment
 # ---------------------------------------------------------------------------
 
-cd "${git_repo_root}"
+cd "${REPO_ROOT}"
 export KUBECONFIG="${kube_config_path}"
 
 total_start=$SECONDS

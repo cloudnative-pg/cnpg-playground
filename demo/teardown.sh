@@ -28,15 +28,13 @@
 set -u
 [[ "${DEBUG:-false}" == "true" ]] && set -x
 
-git_repo_root=$(git rev-parse --show-toplevel)
-
 # Source the common setup script
-source "${git_repo_root}/scripts/common.sh"
+source "$(cd "$(dirname "$0")/.." && pwd)/scripts/common.sh"
 
-kube_config_path="${git_repo_root}/k8s/kube-config.yaml"
+kube_config_path="${KUBE_CONFIG_PATH}"
 
 # Setup a separate Kubeconfig
-cd "${git_repo_root}"
+cd "${REPO_ROOT}"
 export KUBECONFIG="${kube_config_path}"
 
 # Detect or use the provided regions

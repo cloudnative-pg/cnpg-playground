@@ -38,7 +38,7 @@ RUSTFS_ROOT_USER="${RUSTFS_ROOT_USER:-cnpg}"
 RUSTFS_ROOT_PASSWORD="${RUSTFS_ROOT_PASSWORD:-Cl0udNativePGRocks}"
 
 # --- Common Prerequisite Checks ---
-REQUIRED_COMMANDS="kind kubectl git grep sed"
+REQUIRED_COMMANDS="kind kubectl grep sed"
 for cmd in $REQUIRED_COMMANDS; do
     if ! command -v "$cmd" &> /dev/null; then
         echo "❌ Error: Missing required command: $cmd"
@@ -62,8 +62,7 @@ if [ -z "${CONTAINER_PROVIDER:-}" ]; then
 fi
 
 # Determine project root and kubeconfig path
-GIT_REPO_ROOT=$(git rev-parse --show-toplevel)
-KUBE_CONFIG_PATH="${GIT_REPO_ROOT}/k8s/kube-config.yaml"
+REPO_ROOT=$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)
+KUBE_CONFIG_PATH="${REPO_ROOT}/k8s/kube-config.yaml"
 
-# source funcs_regions.sh
-source $(git rev-parse --show-toplevel)/scripts/funcs_regions.sh
+source "${REPO_ROOT}/scripts/funcs_regions.sh"
