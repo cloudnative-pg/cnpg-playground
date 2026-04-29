@@ -43,12 +43,26 @@ git_repo_root=$(git rev-parse --show-toplevel)
 source "${git_repo_root}/scripts/common.sh"
 
 kube_config_path="${git_repo_root}/k8s/kube-config.yaml"
-templates_dir="${git_repo_root}/demo/templates"
+templates_dir="${TEMPLATES_DIR:-${git_repo_root}/demo/templates}"
 legacy_templates_dir="${templates_dir}/legacy"
 
 # Default PostgreSQL image (overridable via env var)
 POSTGRESQL_IMAGE="${POSTGRESQL_IMAGE:-ghcr.io/cloudnative-pg/postgresql:18-standard-trixie}"
 POSTGRESQL_LEGACY_IMAGE="${POSTGRESQL_LEGACY_IMAGE:-ghcr.io/cloudnative-pg/postgresql:18-system-trixie}"
+
+# Template file overrides — set any of these to replace the corresponding built-in fragment
+tmpl_cluster="${CLUSTER_TEMPLATE:-${templates_dir}/cluster.yaml}"
+tmpl_bootstrap_initdb="${BOOTSTRAP_INITDB_TEMPLATE:-${templates_dir}/bootstrap-initdb.yaml}"
+tmpl_bootstrap_recovery="${BOOTSTRAP_RECOVERY_TEMPLATE:-${templates_dir}/bootstrap-recovery.yaml}"
+tmpl_cluster_plugin_params="${CLUSTER_PLUGIN_PARAMS_TEMPLATE:-${templates_dir}/cluster-plugin-params.yaml}"
+tmpl_replica_section="${REPLICA_SECTION_TEMPLATE:-${templates_dir}/replica-section.yaml}"
+tmpl_external_cluster_plugin="${EXTERNAL_CLUSTER_PLUGIN_TEMPLATE:-${templates_dir}/external-cluster-plugin.yaml}"
+tmpl_scheduledbackup_plugin="${SCHEDULEDBACKUP_PLUGIN_TEMPLATE:-${templates_dir}/scheduledbackup-plugin.yaml}"
+tmpl_objectstore="${OBJECTSTORE_TEMPLATE:-${templates_dir}/objectstore.yaml}"
+tmpl_podmonitor="${PODMONITOR_TEMPLATE:-${templates_dir}/podmonitor.yaml}"
+tmpl_cluster_legacy_params="${CLUSTER_LEGACY_PARAMS_TEMPLATE:-${legacy_templates_dir}/cluster-legacy-params.yaml}"
+tmpl_external_cluster_legacy="${EXTERNAL_CLUSTER_LEGACY_TEMPLATE:-${legacy_templates_dir}/external-cluster-legacy.yaml}"
+tmpl_scheduledbackup_legacy="${SCHEDULEDBACKUP_LEGACY_TEMPLATE:-${legacy_templates_dir}/scheduledbackup-legacy.yaml}"
 
 # Check whether a CRD exists in the given cluster context
 check_crd_existence() {
@@ -150,13 +164,13 @@ kubectl_apply() {
 generate_objectstore_yaml() {
     local region="$1"
     REGION="${region}" \
-    envsubst '${REGION}' < "${templates_dir}/objectstore.yaml"
+    envsubst '${REGION}' < "${tmpl_objectstore}"
 }
 
 generate_podmonitor_yaml() {
     local region="$1"
     REGION="${region}" \
-    envsubst '${REGION}' < "${templates_dir}/podmonitor.yaml"
+    envsubst '${REGION}' < "${tmpl_podmonitor}"
 }
 
 # Emit a Cluster + ScheduledBackup stream using the Barman Cloud Plugin
@@ -167,36 +181,36 @@ generate_cluster_yaml_plugin() {
 
     # Cluster header: apiVersion through affinity
     REGION="${region}" POSTGRESQL_IMAGE="${POSTGRESQL_IMAGE}" \
-    envsubst '${REGION} ${POSTGRESQL_IMAGE}' < "${templates_dir}/cluster-header.yaml"
+    envsubst '${REGION} ${POSTGRESQL_IMAGE}' < "${tmpl_cluster}"
 
     # Bootstrap: initdb for the primary (or single-region); recovery for replicas
     if [ "${region}" = "${primary_region}" ] || [ "${num_regions}" -eq 1 ]; then
-        cat "${templates_dir}/bootstrap-initdb.yaml"
+        cat "${tmpl_bootstrap_initdb}"
     else
         PRIMARY_REGION="${primary_region}" \
-        envsubst '${PRIMARY_REGION}' < "${templates_dir}/bootstrap-recovery.yaml"
+        envsubst '${PRIMARY_REGION}' < "${tmpl_bootstrap_recovery}"
     fi
 
     # PostgreSQL parameters and Barman Cloud Plugin configuration
     REGION="${region}" \
-    envsubst '${REGION}' < "${templates_dir}/cluster-plugin-params.yaml"
+    envsubst '${REGION}' < "${tmpl_cluster_plugin_params}"
 
     # Distributed topology replica section — only for multi-region setups
     if [ "${num_regions}" -gt 1 ]; then
         REGION="${region}" PRIMARY_REGION="${primary_region}" SOURCE_REGION="${source_region}" \
-        envsubst '${REGION} ${PRIMARY_REGION} ${SOURCE_REGION}' < "${templates_dir}/replica-section.yaml"
+        envsubst '${REGION} ${PRIMARY_REGION} ${SOURCE_REGION}' < "${tmpl_replica_section}"
     fi
 
     # External cluster references — one entry per region
     printf '  externalClusters:\n'
     local r
     for r in "${REGIONS[@]}"; do
-        REGION="${r}" envsubst '${REGION}' < "${templates_dir}/external-cluster-plugin.yaml"
+        REGION="${r}" envsubst '${REGION}' < "${tmpl_external_cluster_plugin}"
     done
 
     # ScheduledBackup document
     REGION="${region}" \
-    envsubst '${REGION}' < "${templates_dir}/scheduledbackup-plugin.yaml"
+    envsubst '${REGION}' < "${tmpl_scheduledbackup_plugin}"
 }
 
 # Emit a Cluster + ScheduledBackup stream using in-tree (legacy) Barman configuration
@@ -206,31 +220,31 @@ generate_cluster_yaml_legacy() {
     source_region=$(get_source_region "${region}")
 
     REGION="${region}" POSTGRESQL_IMAGE="${POSTGRESQL_LEGACY_IMAGE}" \
-    envsubst '${REGION} ${POSTGRESQL_IMAGE}' < "${templates_dir}/cluster-header.yaml"
+    envsubst '${REGION} ${POSTGRESQL_IMAGE}' < "${tmpl_cluster}"
 
     if [ "${region}" = "${primary_region}" ] || [ "${num_regions}" -eq 1 ]; then
-        cat "${templates_dir}/bootstrap-initdb.yaml"
+        cat "${tmpl_bootstrap_initdb}"
     else
         PRIMARY_REGION="${primary_region}" \
-        envsubst '${PRIMARY_REGION}' < "${templates_dir}/bootstrap-recovery.yaml"
+        envsubst '${PRIMARY_REGION}' < "${tmpl_bootstrap_recovery}"
     fi
 
     REGION="${region}" \
-    envsubst '${REGION}' < "${legacy_templates_dir}/cluster-legacy-params.yaml"
+    envsubst '${REGION}' < "${tmpl_cluster_legacy_params}"
 
     if [ "${num_regions}" -gt 1 ]; then
         REGION="${region}" PRIMARY_REGION="${primary_region}" SOURCE_REGION="${source_region}" \
-        envsubst '${REGION} ${PRIMARY_REGION} ${SOURCE_REGION}' < "${templates_dir}/replica-section.yaml"
+        envsubst '${REGION} ${PRIMARY_REGION} ${SOURCE_REGION}' < "${tmpl_replica_section}"
     fi
 
     printf '  externalClusters:\n'
     local r
     for r in "${REGIONS[@]}"; do
-        REGION="${r}" envsubst '${REGION}' < "${legacy_templates_dir}/external-cluster-legacy.yaml"
+        REGION="${r}" envsubst '${REGION}' < "${tmpl_external_cluster_legacy}"
     done
 
     REGION="${region}" \
-    envsubst '${REGION}' < "${legacy_templates_dir}/scheduledbackup-legacy.yaml"
+    envsubst '${REGION}' < "${tmpl_scheduledbackup_legacy}"
 }
 
 # ---------------------------------------------------------------------------

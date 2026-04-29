@@ -116,6 +116,46 @@ Kubernetes clusters rather than the Kind clusters created by
 For example, if your contexts are named `eu` and `us`, set both to empty
 strings: `K8S_CONTEXT_PREFIX="" K8S_NAME="" ./demo/setup.sh eu us`.
 
+### Template customisation
+
+`demo/setup.sh` renders YAML from the fragments in `demo/templates/` using
+`envsubst`. You can replace the entire directory or override individual
+fragments without modifying the repository.
+
+| Variable | Description |
+|----------|-------------|
+| `TEMPLATES_DIR=<path>` | Replace the whole templates directory with your own |
+| `CLUSTER_TEMPLATE=<file>` | Override `cluster.yaml` only |
+| `BOOTSTRAP_INITDB_TEMPLATE=<file>` | Override `bootstrap-initdb.yaml` |
+| `BOOTSTRAP_RECOVERY_TEMPLATE=<file>` | Override `bootstrap-recovery.yaml` |
+| `CLUSTER_PLUGIN_PARAMS_TEMPLATE=<file>` | Override `cluster-plugin-params.yaml` |
+| `REPLICA_SECTION_TEMPLATE=<file>` | Override `replica-section.yaml` |
+| `EXTERNAL_CLUSTER_PLUGIN_TEMPLATE=<file>` | Override `external-cluster-plugin.yaml` |
+| `SCHEDULEDBACKUP_PLUGIN_TEMPLATE=<file>` | Override `scheduledbackup-plugin.yaml` |
+| `OBJECTSTORE_TEMPLATE=<file>` | Override `objectstore.yaml` |
+| `PODMONITOR_TEMPLATE=<file>` | Override `podmonitor.yaml` |
+
+Legacy-mode equivalents (used with `LEGACY=true`):
+
+| Variable | Description |
+|----------|-------------|
+| `CLUSTER_LEGACY_PARAMS_TEMPLATE=<file>` | Override `legacy/cluster-legacy-params.yaml` |
+| `EXTERNAL_CLUSTER_LEGACY_TEMPLATE=<file>` | Override `legacy/external-cluster-legacy.yaml` |
+| `SCHEDULEDBACKUP_LEGACY_TEMPLATE=<file>` | Override `legacy/scheduledbackup-legacy.yaml` |
+
+Examples:
+
+```bash
+# Use a completely custom templates directory
+TEMPLATES_DIR=/path/to/my-templates ./demo/setup.sh
+
+# Override only the Cluster fragment, keep everything else
+CLUSTER_TEMPLATE=/path/to/my-cluster.yaml ./demo/setup.sh
+
+# Preview the result of your custom template without applying
+DRY_RUN=true CLUSTER_TEMPLATE=/path/to/my-cluster.yaml ./demo/setup.sh
+```
+
 Examples:
 
 ```bash
