@@ -6,22 +6,43 @@
   "ignorePaths": [
     "**/out/**"
   ],
-  "regexManagers": [
+  "automerge": false,
+  "vulnerabilityAlerts": {
+    "enabled": true
+  },
+  "osvVulnerabilityAlerts": true,
+  "customManagers": [
     {
+      "customType": "regex",
       "description": "Version variables in shell scripts annotated with # renovate comments",
       "fileMatch": ["(^|/)[^/]*\\.sh$"],
       "matchStrings": [
-        "# renovate: datasource=(?<datasource>[a-z-]+) depName=(?<depName>[^\\s]+)\\n[A-Z_]+=\"\\$\\{[A-Z_]+:-(?<currentValue>[^\"]+)\\}\""
+        "# renovate: datasource=(?<datasource>[a-z-]+) depName=(?<depName>[^\\s]+)\\n\\s*[A-Z0-9_]+=\"\\$\\{[A-Z0-9_]+:-(?<currentValue>[^\"]+)\\}\""
       ],
       "versioningTemplate": "semver-coerced"
     },
     {
+      "customType": "regex",
       "description": "GitHub refs in kustomization.yaml resources",
       "fileMatch": ["(^|/)kustomization\\.yaml$"],
       "matchStrings": [
         "https://github\\.com/(?<depName>[^/?]+/[^/?]+)[^?]*\\?ref=(?<currentValue>[^\\s]+)"
       ],
       "datasourceTemplate": "github-releases"
+    }
+  ],
+  "packageRules": [
+    {
+      "description": "CNPG release branches only exist for GA versions; skip pre-releases",
+      "matchDatasources": ["github-releases"],
+      "matchPackageNames": ["cloudnative-pg/cloudnative-pg"],
+      "allowedVersions": "/^v\\d+\\.\\d+\\.\\d+$/"
+    },
+    {
+      "description": "RustFS: stay on the beta track or move to GA, never to alpha",
+      "matchDatasources": ["docker"],
+      "matchPackageNames": ["rustfs/rustfs"],
+      "allowedVersions": "/^\\d+\\.\\d+\\.\\d+(-beta\\.\\d+)?$/"
     }
   ]
 }

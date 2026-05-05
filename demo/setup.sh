@@ -280,11 +280,9 @@ for region in "${REGIONS[@]}"; do
                 kubectl --context "${CONTEXT_NAME}" apply -f - --server-side
         else
             # Deploy CloudNativePG operator (latest stable release)
-            cnpg_ver="${CNPG_VERSION#v}"
-            cnpg_minor=$(printf '%s' "${cnpg_ver}" | cut -d. -f1,2)
             kubectl apply --server-side \
                 --context "${CONTEXT_NAME}" \
-                -f "https://raw.githubusercontent.com/cloudnative-pg/cloudnative-pg/release-${cnpg_minor}/releases/cnpg-${cnpg_ver}.yaml"
+                -f "https://raw.githubusercontent.com/cloudnative-pg/cloudnative-pg/release-${CNPG_RELEASE_BRANCH}/releases/cnpg-${CNPG_VERSION_BARE}.yaml"
         fi
 
         # Wait for CNPG deployment to complete

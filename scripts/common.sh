@@ -72,6 +72,9 @@ KUBE_CONFIG_PATH="${REPO_ROOT}/k8s/kube-config.yaml"
 CERT_MANAGER_VERSION="${CERT_MANAGER_VERSION:-v1.20.2}"
 # renovate: datasource=github-releases depName=cloudnative-pg/cloudnative-pg
 CNPG_VERSION="${CNPG_VERSION:-v1.29.0}"
+# Derived: bare version and release branch suffix (e.g. v1.29.0 -> 1.29.0, 1.29)
+CNPG_VERSION_BARE="${CNPG_VERSION#v}"
+CNPG_RELEASE_BRANCH="${CNPG_VERSION_BARE%.*}"
 # renovate: datasource=github-releases depName=cloudnative-pg/plugin-barman-cloud
 BARMAN_CLOUD_PLUGIN_VERSION="${BARMAN_CLOUD_PLUGIN_VERSION:-v0.12.0}"
 # renovate: datasource=github-releases depName=grafana/grafana-operator

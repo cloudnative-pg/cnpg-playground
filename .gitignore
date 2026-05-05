@@ -28,6 +28,3 @@
 
 # Go workspace file
 go.work
-
-# Claude Code instructions (local only)
-CLAUDE.md

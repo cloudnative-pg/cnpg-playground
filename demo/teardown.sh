@@ -68,10 +68,8 @@ for region in "${REGIONS[@]}"; do
         "https://github.com/cert-manager/cert-manager/releases/download/${CERT_MANAGER_VERSION}/cert-manager.yaml"
 
     # Delete CNPG operator
-    cnpg_ver="${CNPG_VERSION#v}"
-    cnpg_minor=$(printf '%s' "${cnpg_ver}" | cut -d. -f1,2)
     kubectl delete --context "${CONTEXT_NAME}" --ignore-not-found=true -f \
-        "https://raw.githubusercontent.com/cloudnative-pg/cloudnative-pg/release-${cnpg_minor}/releases/cnpg-${cnpg_ver}.yaml"
+        "https://raw.githubusercontent.com/cloudnative-pg/cloudnative-pg/release-${CNPG_RELEASE_BRANCH}/releases/cnpg-${CNPG_VERSION_BARE}.yaml"
 
     # Remove backup data from the object store container
     ${CONTAINER_PROVIDER} exec objectstore-${region} rm -rf /data/backups/pg-${region}
