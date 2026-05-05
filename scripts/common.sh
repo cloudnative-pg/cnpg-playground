@@ -31,7 +31,9 @@ K8S_CONTEXT_PREFIX=${K8S_CONTEXT_PREFIX-kind-}
 K8S_BASE_NAME=${K8S_NAME-k8s-}
 
 # RustFS Configuration
-RUSTFS_IMAGE="${RUSTFS_IMAGE:-rustfs/rustfs:latest}"
+# renovate: datasource=docker depName=rustfs/rustfs
+RUSTFS_VERSION="${RUSTFS_VERSION:-1.0.0-beta.1}"
+RUSTFS_IMAGE="${RUSTFS_IMAGE:-rustfs/rustfs:${RUSTFS_VERSION}}"
 RUSTFS_BASE_NAME="${RUSTFS_BASE_NAME:-objectstore}"
 RUSTFS_BASE_PORT=${RUSTFS_BASE_PORT:-9001}
 RUSTFS_ROOT_USER="${RUSTFS_ROOT_USER:-cnpg}"
@@ -64,5 +66,15 @@ fi
 # Determine project root and kubeconfig path
 REPO_ROOT=$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)
 KUBE_CONFIG_PATH="${REPO_ROOT}/k8s/kube-config.yaml"
+
+# Demo deployment versions
+# renovate: datasource=github-releases depName=cert-manager/cert-manager
+CERT_MANAGER_VERSION="${CERT_MANAGER_VERSION:-v1.20.2}"
+# renovate: datasource=github-releases depName=cloudnative-pg/cloudnative-pg
+CNPG_VERSION="${CNPG_VERSION:-v1.29.0}"
+# renovate: datasource=github-releases depName=cloudnative-pg/plugin-barman-cloud
+BARMAN_CLOUD_PLUGIN_VERSION="${BARMAN_CLOUD_PLUGIN_VERSION:-v0.12.0}"
+# renovate: datasource=github-releases depName=grafana/grafana-operator
+GRAFANA_OPERATOR_VERSION="${GRAFANA_OPERATOR_VERSION:-v5.22.2}"
 
 source "${REPO_ROOT}/scripts/funcs_regions.sh"

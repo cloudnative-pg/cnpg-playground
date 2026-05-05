@@ -279,9 +279,12 @@ for region in "${REGIONS[@]}"; do
                 https://raw.githubusercontent.com/cloudnative-pg/artifacts/main/manifests/operator-manifest.yaml | \
                 kubectl --context "${CONTEXT_NAME}" apply -f - --server-side
         else
-            # Deploy CloudNativePG operator (latest version, through the plugin)
-            kubectl cnpg install generate --control-plane | \
-                kubectl --context "${CONTEXT_NAME}" apply -f - --server-side
+            # Deploy CloudNativePG operator (latest stable release)
+            cnpg_ver="${CNPG_VERSION#v}"
+            cnpg_minor=$(printf '%s' "${cnpg_ver}" | cut -d. -f1,2)
+            kubectl apply --server-side \
+                --context "${CONTEXT_NAME}" \
+                -f "https://raw.githubusercontent.com/cloudnative-pg/cloudnative-pg/release-${cnpg_minor}/releases/cnpg-${cnpg_ver}.yaml"
         fi
 
         # Wait for CNPG deployment to complete
@@ -292,7 +295,7 @@ for region in "${REGIONS[@]}"; do
 
         # Deploy cert-manager
         kubectl apply --context "${CONTEXT_NAME}" -f \
-            https://github.com/cert-manager/cert-manager/releases/latest/download/cert-manager.yaml
+            "https://github.com/cert-manager/cert-manager/releases/download/${CERT_MANAGER_VERSION}/cert-manager.yaml"
 
         # Wait for cert-manager deployment to complete
         kubectl rollout --context "${CONTEXT_NAME}" status deployment \
@@ -308,7 +311,7 @@ for region in "${REGIONS[@]}"; do
         else
             # Deploy Barman Cloud Plugin (latest stable)
             kubectl apply --context "${CONTEXT_NAME}" -f \
-                https://github.com/cloudnative-pg/plugin-barman-cloud/releases/latest/download/manifest.yaml
+                "https://github.com/cloudnative-pg/plugin-barman-cloud/releases/download/${BARMAN_CLOUD_PLUGIN_VERSION}/manifest.yaml"
         fi
 
         # Wait for Barman Cloud Plugin deployment to complete
