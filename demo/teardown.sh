@@ -61,15 +61,15 @@ for region in "${REGIONS[@]}"; do
 
     # Delete Barman Cloud Plugin
     kubectl delete --context "${CONTEXT_NAME}" --ignore-not-found=true -f \
-        https://github.com/cloudnative-pg/plugin-barman-cloud/releases/latest/download/manifest.yaml
+        "https://github.com/cloudnative-pg/plugin-barman-cloud/releases/download/${BARMAN_CLOUD_PLUGIN_VERSION}/manifest.yaml"
 
     # Delete cert-manager
     kubectl delete --context "${CONTEXT_NAME}" --ignore-not-found=true -f \
-        https://github.com/cert-manager/cert-manager/releases/latest/download/cert-manager.yaml
+        "https://github.com/cert-manager/cert-manager/releases/download/${CERT_MANAGER_VERSION}/cert-manager.yaml"
 
     # Delete CNPG operator
-    kubectl cnpg install generate --control-plane | \
-        kubectl --context "${CONTEXT_NAME}" delete --ignore-not-found=true -f -
+    kubectl delete --context "${CONTEXT_NAME}" --ignore-not-found=true -f \
+        "https://raw.githubusercontent.com/cloudnative-pg/cloudnative-pg/release-${CNPG_RELEASE_BRANCH}/releases/cnpg-${CNPG_VERSION_BARE}.yaml"
 
     # Remove backup data from the object store container
     ${CONTAINER_PROVIDER} exec objectstore-${region} rm -rf /data/backups/pg-${region}

@@ -64,7 +64,7 @@ for region in "${REGIONS[@]}"; do
 
 # Deploying Grafana operator
     kubectl --context ${CONTEXT_NAME} apply --force-conflicts --server-side \
-      -f https://github.com/grafana/grafana-operator/releases/latest/download/kustomize-cluster_scoped.yaml
+      -f "https://github.com/grafana/grafana-operator/releases/download/${GRAFANA_OPERATOR_VERSION}/kustomize-cluster_scoped.yaml"
     kubectl --context ${CONTEXT_NAME} -n grafana \
       patch deployment grafana-operator-controller-manager \
       --type='merge' \
