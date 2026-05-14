@@ -177,5 +177,8 @@ done
 echo
 echo "⏱️  Total setup time: $(format_duration $((SECONDS - total_start)))."
 echo
+# Point the shared kubeconfig at the first region so users land on it,
+# not on whichever cluster was created last.
+kubectl config use-context "$(get_cluster_context "${REGIONS[0]}")" > /dev/null
 # Display information using the info script
 source "$(dirname "$0")/info.sh"
