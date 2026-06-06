@@ -285,6 +285,14 @@ for region in "${REGIONS[@]}"; do
                 -f "https://raw.githubusercontent.com/cloudnative-pg/cloudnative-pg/release-${CNPG_RELEASE_BRANCH}/releases/cnpg-${CNPG_VERSION_BARE}.yaml"
         fi
 
+        # Pin the operator to the control-plane node. The playground taints the
+        # postgres nodes and reserves infra/app nodes for workloads, so the
+        # control-plane is the natural home for the operator in this demo.
+        kubectl --context "${CONTEXT_NAME}" -n cnpg-system \
+            patch deployment cnpg-controller-manager \
+            --type='merge' \
+            --patch='{"spec":{"template":{"spec":{"affinity":{"nodeAffinity":{"requiredDuringSchedulingIgnoredDuringExecution":{"nodeSelectorTerms":[{"matchExpressions":[{"key":"node-role.kubernetes.io/control-plane","operator":"Exists"}]}]}}},"tolerations":[{"key":"node-role.kubernetes.io/control-plane","operator":"Exists"}]}}}}'
+
         # Wait for CNPG deployment to complete
         kubectl --context "${CONTEXT_NAME}" rollout status deployment \
             -n cnpg-system cnpg-controller-manager
