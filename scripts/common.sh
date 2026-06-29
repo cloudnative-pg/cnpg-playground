@@ -71,7 +71,7 @@ KUBE_CONFIG_PATH="${REPO_ROOT}/k8s/kube-config.yaml"
 # renovate: datasource=github-releases depName=cert-manager/cert-manager
 CERT_MANAGER_VERSION="${CERT_MANAGER_VERSION:-v1.20.2}"
 # renovate: datasource=github-releases depName=cloudnative-pg/cloudnative-pg
-CNPG_VERSION="${CNPG_VERSION:-v1.29.1}"
+CNPG_VERSION="${CNPG_VERSION:-v1.30.0}"
 # Derived: bare version and release branch suffix (e.g. v1.29.0 -> 1.29.0, 1.29)
 CNPG_VERSION_BARE="${CNPG_VERSION#v}"
 CNPG_RELEASE_BRANCH="${CNPG_VERSION_BARE%.*}"
