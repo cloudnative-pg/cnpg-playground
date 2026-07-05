@@ -76,8 +76,8 @@ CNPG_VERSION="${CNPG_VERSION:-v1.29.1}"
 CNPG_VERSION_BARE="${CNPG_VERSION#v}"
 CNPG_RELEASE_BRANCH="${CNPG_VERSION_BARE%.*}"
 # renovate: datasource=github-releases depName=cloudnative-pg/plugin-barman-cloud
-BARMAN_CLOUD_PLUGIN_VERSION="${BARMAN_CLOUD_PLUGIN_VERSION:-v0.12.0}"
+BARMAN_CLOUD_PLUGIN_VERSION="${BARMAN_CLOUD_PLUGIN_VERSION:-v0.13.0}"
 # renovate: datasource=github-releases depName=grafana/grafana-operator
-GRAFANA_OPERATOR_VERSION="${GRAFANA_OPERATOR_VERSION:-v5.23.0}"
+GRAFANA_OPERATOR_VERSION="${GRAFANA_OPERATOR_VERSION:-v5.24.0}"
 
 source "${REPO_ROOT}/scripts/funcs_regions.sh"
