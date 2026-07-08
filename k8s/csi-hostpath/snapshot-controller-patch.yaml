@@ -1,0 +1,18 @@
+##
+## Strategic-merge patch applied to the upstream snapshot-controller Deployment
+## (kubernetes-csi/external-snapshotter). Adds --enable-distributed-snapshotting,
+## which tells the controller that a csi-snapshotter sidecar runs on each node
+## (see csi-hostpath-plugin-patch.yaml) and routes snapshot operations to the node
+## that owns each volume.
+##
+## `args` has no strategic-merge key, so the full list is restated here.
+##
+spec:
+  template:
+    spec:
+      containers:
+        - name: snapshot-controller
+          args:
+            - "--v=5"
+            - "--leader-election=true"
+            - "--enable-distributed-snapshotting=true"

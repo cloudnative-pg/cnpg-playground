@@ -35,6 +35,11 @@
 
 # Source the common setup script
 source "$(dirname "$0")/common.sh"
+# Provides deploy_csi_host_path()
+source "$(dirname "$0")/csi-hostpath.sh"
+
+# Deploy the CSI hostpath driver + volume snapshot support unless disabled.
+DEPLOY_CSI_HOSTPATH="${DEPLOY_CSI_HOSTPATH:-true}"
 
 echo "✅ Prerequisites met. Using '$CONTAINER_PROVIDER' as the container provider."
 
@@ -107,6 +112,12 @@ for region in "${REGIONS[@]}"; do
     kubectl label node -l postgres.node.kubernetes.io node-role.kubernetes.io/postgres=
     kubectl label node -l infra.node.kubernetes.io node-role.kubernetes.io/infra=
     kubectl label node -l app.node.kubernetes.io node-role.kubernetes.io/app=
+
+    if [ "${DEPLOY_CSI_HOSTPATH}" == "true" ]; then
+        deploy_csi_host_path
+    else
+        echo "⏭️  Skipping CSI hostpath driver deployment (DEPLOY_CSI_HOSTPATH=${DEPLOY_CSI_HOSTPATH})."
+    fi
 
     echo "🌐 Connecting RustFS to the Kind network..."
     $CONTAINER_PROVIDER network connect kind "${RUSTFS_CONTAINER_NAME}"

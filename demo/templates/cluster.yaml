@@ -7,10 +7,15 @@ spec:
   imageName: ${POSTGRESQL_IMAGE}
 
   storage:
+    # Node-local storage backed by the CSI hostpath driver, so each instance can
+    # be backed up and restored via volume snapshots. Leave STORAGE_CLASS empty
+    # to fall back to the cluster's default StorageClass.
+    storageClass: ${STORAGE_CLASS}
     size: 1Gi
 
   # See https://cloudnative-pg.io/documentation/current/storage/#volume-for-wal
   walStorage:
+    storageClass: ${STORAGE_CLASS}
     size: 1Gi
 
   # See https://cloudnative-pg.io/documentation/current/scheduling/#isolating-postgresql-workloads

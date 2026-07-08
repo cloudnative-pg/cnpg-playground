@@ -103,6 +103,7 @@ override the default playground configuration:
 | `RUSTFS_BASE_PORT` | `9001` | Host port for the first RustFS console; increments by one per region |
 | `K8S_NAME` | `k8s-` | Base name used when creating Kind clusters |
 | `K8S_CONTEXT_PREFIX` | `kind-` | Prefix added to Kind cluster names to form kubectl context names |
+| `DEPLOY_CSI_HOSTPATH` | `true` | Deploy the CSI hostpath driver + volume snapshot support in every region |
 
 Example:
 
@@ -150,6 +151,39 @@ In this example:
 - Worker nodes have different roles, such as `infra` for infrastructure, `app`
   for application workloads, and `postgres` for PostgreSQL databases. Each node
   runs Kubernetes version `v1.34.0`.
+
+### Volume Snapshots
+
+Each region ships with the [CSI hostpath driver](https://github.com/kubernetes-csi/csi-driver-host-path)
+and volume snapshot support, so you can experiment with CloudNativePG's
+snapshot-based backup and recovery.
+
+The driver uses its *distributed* mode: it runs on each `postgres`-role node
+(one DaemonSet pod per node) and provisions volumes locally, so the three
+PostgreSQL instances keep their spread across separate nodes while each instance
+gets node-local storage that can be snapshotted independently. It exposes a
+`csi-hostpath-fast` StorageClass (with `volumeBindingMode: WaitForFirstConsumer`)
+and a default `csi-hostpath-snapclass` VolumeSnapshotClass.
+
+The demo PostgreSQL clusters use `csi-hostpath-fast` by default (override with
+`STORAGE_CLASS` when running `demo/setup.sh`; set `STORAGE_CLASS=""` to use each
+cluster's default StorageClass). Kind's `standard` (local-path) class remains the
+cluster default and is not modified.
+
+When the clusters run on `csi-hostpath-fast`, `demo/setup.sh` also configures
+`spec.backup.volumeSnapshot` with the `csi-hostpath-snapclass` VolumeSnapshotClass
+(WAL archiving stays on the object store for point-in-time recovery). You can take
+a snapshot-based backup on demand with:
+
+```bash
+kubectl cnpg backup pg-eu --method volumeSnapshot
+```
+
+To skip this and keep the clusters on `standard` local-path storage only, run:
+
+```bash
+DEPLOY_CSI_HOSTPATH=false ./scripts/setup.sh
+```
 
 ### Cleaning Up the Environment
 
