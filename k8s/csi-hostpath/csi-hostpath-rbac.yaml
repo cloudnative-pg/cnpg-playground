@@ -1,0 +1,59 @@
+##
+## The csi-snapshotter sidecar shares the pod's `csi-provisioner` ServiceAccount
+## (a pod cannot give individual containers distinct ServiceAccounts). The
+## upstream external-snapshotter RBAC binds the `external-snapshotter-runner`
+## ClusterRole to a separate `csi-snapshotter` ServiceAccount, so we add a
+## binding to `csi-provisioner` here. The ClusterRole itself is created by
+## applying the upstream external-snapshotter RBAC (see scripts/csi-hostpath.sh).
+##
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: csi-hostpath-provisioner-snapshotter-role
+  labels:
+    app.kubernetes.io/instance: hostpath.csi.k8s.io
+    app.kubernetes.io/part-of: csi-driver-host-path
+subjects:
+  - kind: ServiceAccount
+    name: csi-provisioner
+    namespace: kube-system
+roleRef:
+  kind: ClusterRole
+  name: external-snapshotter-runner
+  apiGroup: rbac.authorization.k8s.io
+---
+##
+## Distributed snapshotting needs the snapshot-controller to watch Nodes (to route
+## each snapshot to the node that owns the volume). Upstream ships this rule
+## commented out in rbac-snapshot-controller.yaml — since we apply that file
+## verbatim from a URL, we grant the permission to the snapshot-controller
+## ServiceAccount here instead.
+##
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: csi-hostpath-snapshot-controller-nodes
+  labels:
+    app.kubernetes.io/instance: hostpath.csi.k8s.io
+    app.kubernetes.io/part-of: csi-driver-host-path
+rules:
+  - apiGroups: [""]
+    resources: ["nodes"]
+    verbs: ["get", "list", "watch"]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: csi-hostpath-snapshot-controller-nodes
+  labels:
+    app.kubernetes.io/instance: hostpath.csi.k8s.io
+    app.kubernetes.io/part-of: csi-driver-host-path
+subjects:
+  - kind: ServiceAccount
+    name: snapshot-controller
+    namespace: kube-system
+roleRef:
+  kind: ClusterRole
+  name: csi-hostpath-snapshot-controller-nodes
+  apiGroup: rbac.authorization.k8s.io

@@ -1,0 +1,7 @@
+    # Volume snapshot backups using the CSI hostpath driver's VolumeSnapshotClass.
+    # WAL archiving stays on the object store (Barman plugin / in-tree), so this
+    # enables snapshot-based base backups with object-store WAL for PITR. Take one
+    # on demand with: kubectl cnpg backup <cluster> -m volumeSnapshot
+    volumeSnapshot:
+      className: ${VOLUME_SNAPSHOT_CLASS}
+      online: true

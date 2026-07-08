@@ -80,4 +80,22 @@ BARMAN_CLOUD_PLUGIN_VERSION="${BARMAN_CLOUD_PLUGIN_VERSION:-v0.13.0}"
 # renovate: datasource=github-releases depName=grafana/grafana-operator
 GRAFANA_OPERATOR_VERSION="${GRAFANA_OPERATOR_VERSION:-v5.24.0}"
 
+# CSI hostpath driver + volume snapshot support (distributed deployment).
+# scripts/csi-hostpath.sh applies the upstream kubernetes-csi manifests straight
+# from these pinned versions and layers only small local deltas on top (see
+# k8s/csi-hostpath/), so each PostgreSQL instance gets node-local storage with
+# per-node snapshot support.
+# renovate: datasource=github-releases depName=kubernetes-csi/csi-driver-host-path
+CSI_DRIVER_HOST_PATH_VERSION="${CSI_DRIVER_HOST_PATH_VERSION:-v1.17.0}"
+# renovate: datasource=github-releases depName=kubernetes-csi/external-snapshotter
+EXTERNAL_SNAPSHOTTER_VERSION="${EXTERNAL_SNAPSHOTTER_VERSION:-v8.4.0}"
+# renovate: datasource=github-releases depName=kubernetes-csi/external-provisioner
+EXTERNAL_PROVISIONER_VERSION="${EXTERNAL_PROVISIONER_VERSION:-v6.1.0}"
+# csi-snapshotter sidecar added to the node plugin for distributed snapshotting.
+# renovate: datasource=docker depName=registry.k8s.io/sig-storage/csi-snapshotter
+CSI_SNAPSHOTTER_IMAGE="${CSI_SNAPSHOTTER_IMAGE:-registry.k8s.io/sig-storage/csi-snapshotter:v8.2.0}"
+# StorageClass exposed by the driver; also the class PostgreSQL clusters use by
+# default (see demo/templates/cluster.yaml and demo/setup.sh STORAGE_CLASS).
+CSI_STORAGE_CLASS="${CSI_STORAGE_CLASS:-csi-hostpath-fast}"
+
 source "${REPO_ROOT}/scripts/funcs_regions.sh"

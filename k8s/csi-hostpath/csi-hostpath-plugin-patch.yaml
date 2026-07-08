@@ -1,0 +1,52 @@
+##
+## Strategic-merge patch applied to the upstream distributed node plugin
+## DaemonSet (kubernetes-csi/csi-driver-host-path, kubernetes-distributed).
+##
+## Three deltas, none of which the upstream distributed deployment provides:
+##   1. A csi-snapshotter sidecar in node-deployment (distributed snapshotting)
+##      mode, so every node manages snapshots for its own local volumes. It shares
+##      the pod's csi-provisioner ServiceAccount (see csi-hostpath-rbac.yaml).
+##   2. A nodeSelector + toleration pinning the driver to the postgres-role nodes,
+##      where PostgreSQL (and therefore its node-local volumes) lives. Without this
+##      the DaemonSet would also land on the infra/app nodes, running idle pods
+##      there — nothing outside the postgres nodes uses this StorageClass.
+##   3. Bumps the hostpath container image from the upstream v1.15.0 (which ships
+##      BusyBox tar, lacking --ignore-failed-read) to the driver version, whose
+##      image installs GNU tar. Required by the ignoreFailedRead VolumeSnapshotClass
+##      parameter used for online snapshots of a running PostgreSQL instance.
+##
+## ${CSI_SNAPSHOTTER_IMAGE} and ${CSI_DRIVER_HOST_PATH_VERSION} are rendered by
+## scripts/csi-hostpath.sh before applying.
+##
+spec:
+  template:
+    spec:
+      nodeSelector:
+        node-role.kubernetes.io/postgres: ""
+      tolerations:
+        - key: node-role.kubernetes.io/postgres
+          operator: Exists
+          effect: NoSchedule
+      containers:
+        - name: csi-snapshotter
+          image: ${CSI_SNAPSHOTTER_IMAGE}
+          args:
+            - -v=5
+            - --csi-address=/csi/csi.sock
+            - --node-deployment=true
+            - --leader-election=false
+          env:
+            - name: NODE_NAME
+              valueFrom:
+                fieldRef:
+                  apiVersion: v1
+                  fieldPath: spec.nodeName
+          securityContext:
+            privileged: true
+          volumeMounts:
+            - mountPath: /csi
+              name: socket-dir
+        # Override the upstream hostpath image: v1.15.0 has BusyBox tar (no
+        # --ignore-failed-read); the driver-version image ships GNU tar.
+        - name: hostpath
+          image: registry.k8s.io/sig-storage/hostpathplugin:${CSI_DRIVER_HOST_PATH_VERSION}
