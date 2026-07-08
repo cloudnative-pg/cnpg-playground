@@ -9,39 +9,39 @@ secondary (Disaster Recovery) cluster through the
 
 ## Architecture
 
-The demo supports any number of regions (defaulting to `eu` and `us`).
+The demo supports any number of regions (defaulting to `eu` and `na`).
 For the default two-region setup:
 
 - **Primary PostgreSQL cluster (`pg-eu`)**: Three instances running in the
   `k8s-eu` Kubernetes cluster (one primary and two replicas).
-- **Disaster Recovery (passive) PostgreSQL cluster (`pg-us`)**: Three replicas
-  (one designated primary and two cascading replicas) running in the `k8s-us`
+- **Disaster Recovery (passive) PostgreSQL cluster (`pg-na`)**: Three replicas
+  (one designated primary and two cascading replicas) running in the `k8s-na`
   Kubernetes cluster.
 
 When more than one region is used, the clusters form a circular replica chain.
 Each cluster streams from its predecessor, and the primary (first region) wraps
-around to the last. For example, with `eu us apj`:
+around to the last. For example, with `eu na apj`:
 
 | Cluster | Streams from (source) |
 |---------|-----------------------|
 | `pg-eu` (primary) | `pg-apj` (dormant until demotion) |
-| `pg-us` | `pg-eu` |
-| `pg-apj` | `pg-us` |
+| `pg-na` | `pg-eu` |
+| `pg-apj` | `pg-na` |
 
 Normal state:
 
 ```
-pg-eu (primary) ◄── pg-us ◄── pg-apj
+pg-eu (primary) ◄── pg-na ◄── pg-apj
      └──────────────────────────────┘ (wrap-around, dormant)
 ```
 
-Switching over to `pg-us` is a declarative two-step operation: the former
+Switching over to `pg-na` is a declarative two-step operation: the former
 primary (`pg-eu`) is demoted and produces a `demotionToken`, which is then
-applied together with a `promotionToken` to `pg-us`. Every cluster has a
+applied together with a `promotionToken` to `pg-na`. Every cluster has a
 valid streaming path after the switchover:
 
 ```
-pg-us (primary) ◄── pg-apj ◄── pg-eu
+pg-na (primary) ◄── pg-apj ◄── pg-eu
 ```
 
 See the [CloudNativePG documentation on distributed topology](https://cloudnative-pg.io/docs/current/replica_cluster#distributed-topology)
@@ -76,11 +76,11 @@ the regions using:
 ./demo/setup.sh
 ```
 
-This deploys to the default regions (`eu` and `us`). To target specific
+This deploys to the default regions (`eu` and `na`). To target specific
 regions, pass them as arguments:
 
 ```bash
-./demo/setup.sh eu us apj
+./demo/setup.sh eu na apj
 ```
 
 > [!NOTE]
@@ -113,8 +113,8 @@ followed by the deployment of the PostgreSQL clusters.
 The last two variables are useful when deploying the demo against existing
 Kubernetes clusters rather than the Kind clusters created by
 `scripts/setup.sh`.
-For example, if your contexts are named `eu` and `us`, set both to empty
-strings: `K8S_CONTEXT_PREFIX="" K8S_NAME="" ./demo/setup.sh eu us`.
+For example, if your contexts are named `eu` and `na`, set both to empty
+strings: `K8S_CONTEXT_PREFIX="" K8S_NAME="" ./demo/setup.sh eu na`.
 
 ### Template customisation
 
@@ -191,7 +191,7 @@ This enables you to recreate the demonstration database without reinstalling
 the CNPG Playground. As with `setup.sh`, you can pass explicit region names:
 
 ```bash
-./demo/teardown.sh eu us apj
+./demo/teardown.sh eu na apj
 ```
 
 For a detailed understanding of the teardown process, refer to the

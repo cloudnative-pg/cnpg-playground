@@ -42,8 +42,8 @@ These tools streamline working with the CNPG Playground.
 
 ## Local Environment Overview
 
-This environment emulates a two-region infrastructure (EU and US), with each
-region containing:
+This environment emulates a two-region infrastructure (EU for Europe and NA
+for North America), with each region containing:
 
 - An object storage service powered by [RustFS](https://rustfs.com/) containers
 - A Kubernetes cluster, deployed using [Kind](https://kind.sigs.k8s.io/),
@@ -72,10 +72,10 @@ This playground environment is managed by three main scripts located in the
 ### Setting Up the Learning Environment
 
 The `setup.sh` script provisions the entire environment. By default, it creates
-two regional clusters: `eu` and `us`.
+two regional clusters: `eu` and `na`.
 
 ```bash
-# Create the default two-region environment (eu, us)
+# Create the default two-region environment (eu, na)
 ./scripts/setup.sh
 ```
 
@@ -210,7 +210,7 @@ control plane nodes in both Kubernetes clusters, execute the following
 commands:
 
 ```bash
-for region in eu us; do
+for region in eu na; do
    kubectl cnpg install generate --control-plane | \
       kubectl --context kind-k8s-${region} apply -f - --server-side
 
@@ -220,7 +220,7 @@ done
 ```
 
 These commands will deploy the CloudNativePG operator with server-side apply on
-both the `kind-k8s-eu` and `kind-k8s-us` clusters.
+both the `kind-k8s-eu` and `kind-k8s-na` clusters.
 
 Ensure that you have the latest version of the `cnpg` plugin installed on your
 local machine.
