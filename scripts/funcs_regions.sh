@@ -20,7 +20,7 @@
 
 #
 # This script contains the functions used to set the ${REGIONS} variable.
-# set_regions() --> if called without an argument, EU and US are set
+# set_regions() --> if called without an argument, EU and NA are set
 #                   otherwise the arguments.
 #
 # detect_running_regions() -->  if called without an argument, the running
@@ -33,8 +33,8 @@ set -euo pipefail
 # --- Set regions ---
 set_regions() {
     if [ $# -eq 0 ]; then
-        REGIONS=("eu" "us")
-        echo "❌ No region provided, using the default regions "eu" "us"..."
+        REGIONS=("eu" "na")
+        echo "❌ No region provided, using the default regions "eu" "na"..."
     else
         REGIONS=("$@")
         echo "🔎 Using the provided regions: ${REGIONS[*]}"
