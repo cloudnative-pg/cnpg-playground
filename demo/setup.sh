@@ -48,8 +48,10 @@ kube_config_path="${KUBE_CONFIG_PATH}"
 templates_dir="${TEMPLATES_DIR:-${REPO_ROOT}/demo/templates}"
 legacy_templates_dir="${templates_dir}/legacy"
 
-# Default PostgreSQL image (overridable via env var)
-POSTGRESQL_IMAGE="${POSTGRESQL_IMAGE:-ghcr.io/cloudnative-pg/postgresql:18-standard-trixie}"
+# Default PostgreSQL major version for plugin mode (selects the entry in
+# IMAGE_CATALOG_NAME's ClusterImageCatalog). Legacy mode still selects a
+# full image name directly, since the catalog only ships minimal images.
+POSTGRESQL_VERSION="${POSTGRESQL_VERSION:-18}"
 POSTGRESQL_LEGACY_IMAGE="${POSTGRESQL_LEGACY_IMAGE:-ghcr.io/cloudnative-pg/postgresql:18-system-trixie}"
 
 # StorageClass for the PostgreSQL clusters. Defaults to the CSI hostpath class
@@ -72,6 +74,7 @@ fi
 tmpl_cluster="${CLUSTER_TEMPLATE:-${templates_dir}/cluster.yaml}"
 tmpl_bootstrap_initdb="${BOOTSTRAP_INITDB_TEMPLATE:-${templates_dir}/bootstrap-initdb.yaml}"
 tmpl_bootstrap_recovery="${BOOTSTRAP_RECOVERY_TEMPLATE:-${templates_dir}/bootstrap-recovery.yaml}"
+tmpl_image_catalog="${IMAGE_CATALOG_TEMPLATE:-${templates_dir}/image-catalog.yaml}"
 tmpl_cluster_plugin_params="${CLUSTER_PLUGIN_PARAMS_TEMPLATE:-${templates_dir}/cluster-plugin-params.yaml}"
 tmpl_replica_section="${REPLICA_SECTION_TEMPLATE:-${templates_dir}/replica-section.yaml}"
 tmpl_external_cluster_plugin="${EXTERNAL_CLUSTER_PLUGIN_TEMPLATE:-${templates_dir}/external-cluster-plugin.yaml}"
@@ -80,6 +83,7 @@ tmpl_backup_volumesnapshot="${BACKUP_VOLUMESNAPSHOT_TEMPLATE:-${templates_dir}/b
 tmpl_objectstore="${OBJECTSTORE_TEMPLATE:-${templates_dir}/objectstore.yaml}"
 tmpl_podmonitor="${PODMONITOR_TEMPLATE:-${templates_dir}/podmonitor.yaml}"
 tmpl_cluster_legacy_params="${CLUSTER_LEGACY_PARAMS_TEMPLATE:-${legacy_templates_dir}/cluster-legacy-params.yaml}"
+tmpl_image_legacy="${IMAGE_LEGACY_TEMPLATE:-${legacy_templates_dir}/image-legacy.yaml}"
 tmpl_external_cluster_legacy="${EXTERNAL_CLUSTER_LEGACY_TEMPLATE:-${legacy_templates_dir}/external-cluster-legacy.yaml}"
 tmpl_scheduledbackup_legacy="${SCHEDULEDBACKUP_LEGACY_TEMPLATE:-${legacy_templates_dir}/scheduledbackup-legacy.yaml}"
 
@@ -174,7 +178,8 @@ kubectl_apply() {
 # YAML generators — each function writes a complete YAML stream to stdout.
 # The caller is responsible for piping to kubectl.
 # Template files use ${REGION}, ${PRIMARY_REGION}, ${SOURCE_REGION},
-# ${POSTGRESQL_IMAGE}, ${STORAGE_CLASS}, and ${VOLUME_SNAPSHOT_CLASS} as
+# ${STORAGE_CLASS}, and ${VOLUME_SNAPSHOT_CLASS},
+# ${IMAGE_CATALOG_NAME}, ${POSTGRESQL_VERSION}, and ${POSTGRESQL_LEGACY_IMAGE}
 # placeholders; envsubst substitutes only those
 # variables (explicit list prevents accidental expansion of env vars).
 # ---------------------------------------------------------------------------
@@ -198,8 +203,12 @@ generate_cluster_yaml_plugin() {
     source_region=$(get_source_region "${region}")
 
     # Cluster header: apiVersion through affinity
-    REGION="${region}" POSTGRESQL_IMAGE="${POSTGRESQL_IMAGE}" STORAGE_CLASS="${STORAGE_CLASS}" \
-    envsubst '${REGION} ${POSTGRESQL_IMAGE} ${STORAGE_CLASS}' < "${tmpl_cluster}"
+    REGION="${region}" STORAGE_CLASS="${STORAGE_CLASS}" \
+    envsubst '${REGION} ${STORAGE_CLASS}' < "${tmpl_cluster}"
+
+    # ClusterImageCatalog reference (see demo/funcs_requirements.sh for the catalog itself)
+    IMAGE_CATALOG_NAME="${IMAGE_CATALOG_NAME}" POSTGRESQL_VERSION="${POSTGRESQL_VERSION}" \
+    envsubst '${IMAGE_CATALOG_NAME} ${POSTGRESQL_VERSION}' < "${tmpl_image_catalog}"
 
     # Bootstrap: initdb for the primary (or single-region); recovery for replicas
     if [ "${region}" = "${primary_region}" ] || [ "${num_regions}" -eq 1 ]; then
@@ -245,8 +254,12 @@ generate_cluster_yaml_legacy() {
     local source_region
     source_region=$(get_source_region "${region}")
 
-    REGION="${region}" POSTGRESQL_IMAGE="${POSTGRESQL_LEGACY_IMAGE}" STORAGE_CLASS="${STORAGE_CLASS}" \
-    envsubst '${REGION} ${POSTGRESQL_IMAGE} ${STORAGE_CLASS}' < "${tmpl_cluster}"
+    REGION="${region}" STORAGE_CLASS="${STORAGE_CLASS}" \
+    envsubst '${REGION} ${STORAGE_CLASS}' < "${tmpl_cluster}"
+
+    # Direct image reference — no catalog available for legacy/system images
+    POSTGRESQL_LEGACY_IMAGE="${POSTGRESQL_LEGACY_IMAGE}" \
+    envsubst '${POSTGRESQL_LEGACY_IMAGE}' < "${tmpl_image_legacy}"
 
     if [ "${region}" = "${primary_region}" ] || [ "${num_regions}" -eq 1 ]; then
         cat "${tmpl_bootstrap_initdb}"

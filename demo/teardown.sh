@@ -67,6 +67,10 @@ for region in "${REGIONS[@]}"; do
     kubectl delete --context "${CONTEXT_NAME}" --ignore-not-found=true -f \
         "https://github.com/cert-manager/cert-manager/releases/download/${CERT_MANAGER_VERSION}/cert-manager.yaml"
 
+    # Delete the ClusterImageCatalog
+    kubectl delete --context "${CONTEXT_NAME}" --ignore-not-found=true -f \
+        "${IMAGE_CATALOG_URL}"
+
     # Delete CNPG operator
     kubectl delete --context "${CONTEXT_NAME}" --ignore-not-found=true -f \
         "https://raw.githubusercontent.com/cloudnative-pg/cloudnative-pg/release-${CNPG_RELEASE_BRANCH}/releases/cnpg-${CNPG_VERSION_BARE}.yaml"

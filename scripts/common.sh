@@ -79,6 +79,13 @@ CNPG_RELEASE_BRANCH="${CNPG_VERSION_BARE%.*}"
 BARMAN_CLOUD_PLUGIN_VERSION="${BARMAN_CLOUD_PLUGIN_VERSION:-v0.13.0}"
 # renovate: datasource=github-releases depName=grafana/grafana-operator
 GRAFANA_OPERATOR_VERSION="${GRAFANA_OPERATOR_VERSION:-v5.24.0}"
+# ClusterImageCatalog with common extensions (pg-crash, pgaudit, pgvector,
+# postgis, timescaledb-oss, wal2json); images are pinned by digest within the
+# file, so tracking the `main` branch is safe. See
+# https://github.com/cloudnative-pg/artifacts/tree/main/image-catalogs-extensions
+IMAGE_CATALOG_URL="${IMAGE_CATALOG_URL:-https://raw.githubusercontent.com/cloudnative-pg/artifacts/refs/heads/main/image-catalogs-extensions/catalog-minimal-trixie.yaml}"
+# Must match metadata.name in IMAGE_CATALOG_URL; referenced by Cluster.spec.imageCatalogRef
+IMAGE_CATALOG_NAME="${IMAGE_CATALOG_NAME:-postgresql-minimal-trixie}"
 
 # CSI hostpath driver + volume snapshot support (distributed deployment).
 # scripts/csi-hostpath.sh applies the upstream kubernetes-csi manifests straight
