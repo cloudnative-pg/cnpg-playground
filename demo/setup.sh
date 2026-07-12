@@ -72,6 +72,7 @@ fi
 
 # Template file overrides — set any of these to replace the corresponding built-in fragment
 tmpl_cluster="${CLUSTER_TEMPLATE:-${templates_dir}/cluster.yaml}"
+tmpl_storage="${STORAGE_TEMPLATE:-${templates_dir}/storage.yaml}"
 tmpl_bootstrap_initdb="${BOOTSTRAP_INITDB_TEMPLATE:-${templates_dir}/bootstrap-initdb.yaml}"
 tmpl_bootstrap_recovery="${BOOTSTRAP_RECOVERY_TEMPLATE:-${templates_dir}/bootstrap-recovery.yaml}"
 tmpl_image_catalog="${IMAGE_CATALOG_TEMPLATE:-${templates_dir}/image-catalog.yaml}"
@@ -206,6 +207,9 @@ generate_cluster_yaml_plugin() {
     REGION="${region}" STORAGE_CLASS="${STORAGE_CLASS}" \
     envsubst '${REGION} ${STORAGE_CLASS}' < "${tmpl_cluster}"
 
+    # Storage (data + WAL volumes)
+    cat "${tmpl_storage}"
+
     # ClusterImageCatalog reference (see demo/funcs_requirements.sh for the catalog itself)
     IMAGE_CATALOG_NAME="${IMAGE_CATALOG_NAME}" POSTGRESQL_VERSION="${POSTGRESQL_VERSION}" \
     envsubst '${IMAGE_CATALOG_NAME} ${POSTGRESQL_VERSION}' < "${tmpl_image_catalog}"
@@ -256,6 +260,9 @@ generate_cluster_yaml_legacy() {
 
     REGION="${region}" STORAGE_CLASS="${STORAGE_CLASS}" \
     envsubst '${REGION} ${STORAGE_CLASS}' < "${tmpl_cluster}"
+
+    # Storage (data + WAL volumes)
+    cat "${tmpl_storage}"
 
     # Direct image reference — no catalog available for legacy/system images
     POSTGRESQL_LEGACY_IMAGE="${POSTGRESQL_LEGACY_IMAGE}" \

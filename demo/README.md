@@ -131,6 +131,7 @@ fragments without modifying the repository.
 |----------|-------------|
 | `TEMPLATES_DIR=<path>` | Replace the whole templates directory with your own |
 | `CLUSTER_TEMPLATE=<file>` | Override `cluster.yaml` only |
+| `STORAGE_TEMPLATE=<file>` | Override `storage.yaml` (shared by both modes) |
 | `BOOTSTRAP_INITDB_TEMPLATE=<file>` | Override `bootstrap-initdb.yaml` |
 | `BOOTSTRAP_RECOVERY_TEMPLATE=<file>` | Override `bootstrap-recovery.yaml` |
 | `IMAGE_CATALOG_TEMPLATE=<file>` | Override `image-catalog.yaml` (plugin mode's `imageCatalogRef`) |
