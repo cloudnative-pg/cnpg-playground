@@ -86,7 +86,7 @@ GRAFANA_OPERATOR_VERSION="${GRAFANA_OPERATOR_VERSION:-v5.24.0}"
 # k8s/csi-hostpath/), so each PostgreSQL instance gets node-local storage with
 # per-node snapshot support.
 # renovate: datasource=github-releases depName=kubernetes-csi/csi-driver-host-path
-CSI_DRIVER_HOST_PATH_VERSION="${CSI_DRIVER_HOST_PATH_VERSION:-v1.17.0}"
+CSI_DRIVER_HOST_PATH_VERSION="${CSI_DRIVER_HOST_PATH_VERSION:-v1.18.0}"
 # renovate: datasource=github-releases depName=kubernetes-csi/external-snapshotter
 EXTERNAL_SNAPSHOTTER_VERSION="${EXTERNAL_SNAPSHOTTER_VERSION:-v8.4.0}"
 # renovate: datasource=github-releases depName=kubernetes-csi/external-provisioner
