@@ -93,7 +93,7 @@ EXTERNAL_SNAPSHOTTER_VERSION="${EXTERNAL_SNAPSHOTTER_VERSION:-v8.4.0}"
 EXTERNAL_PROVISIONER_VERSION="${EXTERNAL_PROVISIONER_VERSION:-v6.1.0}"
 # csi-snapshotter sidecar added to the node plugin for distributed snapshotting.
 # renovate: datasource=docker depName=registry.k8s.io/sig-storage/csi-snapshotter
-CSI_SNAPSHOTTER_IMAGE="${CSI_SNAPSHOTTER_IMAGE:-registry.k8s.io/sig-storage/csi-snapshotter:v8.2.0}"
+CSI_SNAPSHOTTER_IMAGE="${CSI_SNAPSHOTTER_IMAGE:-v8.6.0}"
 # StorageClass exposed by the driver; also the class PostgreSQL clusters use by
 # default (see demo/templates/cluster.yaml and demo/setup.sh STORAGE_CLASS).
 CSI_STORAGE_CLASS="${CSI_STORAGE_CLASS:-csi-hostpath-fast}"
