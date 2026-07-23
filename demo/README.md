@@ -101,6 +101,7 @@ followed by the deployment of the PostgreSQL clusters.
 |----------|---------|-------------|
 | `LEGACY=true` | `false` | Use the legacy in-tree Barman Cloud code instead of the Barman Cloud Plugin |
 | `TRUNK=true` | `false` | Deploy from the `main` branch of both CloudNativePG and the Barman Cloud Plugin |
+| `REQUIREMENTS_ONLY=true` | `false` | Deploy only CloudNativePG, cert-manager, and the Barman Cloud Plugin; skip ObjectStores/Clusters. A later plain run automatically detects and skips already-installed requirements |
 | `DRY_RUN=true` | `false` | Print the generated YAML to stdout without applying it |
 | `OUTPUT_DIR=<path>` | _(unset)_ | Save the generated YAML to `<path>/<region>.yaml` (one file per region) and apply it |
 | `DRY_RUN=true OUTPUT_DIR=<path>` | | Save the generated YAML to files only, without applying |

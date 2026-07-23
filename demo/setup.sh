@@ -25,10 +25,11 @@
 # State synchronization is managed via S3 object storage backed by RustFS.
 #
 # Usage:
-#   ./demo/setup.sh [regions...]    # specify regions (auto-detects running clusters if omitted)
-#   LEGACY=true ./demo/setup.sh     # use in-tree Barman backup instead of plugin
-#   TRUNK=true  ./demo/setup.sh     # deploy from main branch (CNPG + Barman plugin)
-#   DEBUG=true  ./demo/setup.sh     # enable shell trace output (set -x)
+#   ./demo/setup.sh [regions...]        # specify regions (auto-detects running clusters if omitted)
+#   LEGACY=true ./demo/setup.sh         # use in-tree Barman backup instead of plugin
+#   TRUNK=true  ./demo/setup.sh         # deploy from main branch (CNPG + Barman plugin)
+#   REQUIREMENTS_ONLY=true ./demo/setup.sh  # deploy CNPG + cert-manager + Barman plugin only
+#   DEBUG=true  ./demo/setup.sh         # enable shell trace output (set -x)
 #
 # Note: This environment is for learning purposes only and should not be
 # used in production.
@@ -39,6 +40,9 @@ set -eu
 
 # Source the common setup script
 source "$(cd "$(dirname "$0")/.." && pwd)/scripts/common.sh"
+
+# Source the CNPG operator/cert-manager/Barman Cloud Plugin deployment function
+source "${REPO_ROOT}/demo/funcs_requirements.sh"
 
 kube_config_path="${KUBE_CONFIG_PATH}"
 templates_dir="${TEMPLATES_DIR:-${REPO_ROOT}/demo/templates}"
@@ -79,13 +83,6 @@ tmpl_cluster_legacy_params="${CLUSTER_LEGACY_PARAMS_TEMPLATE:-${legacy_templates
 tmpl_external_cluster_legacy="${EXTERNAL_CLUSTER_LEGACY_TEMPLATE:-${legacy_templates_dir}/external-cluster-legacy.yaml}"
 tmpl_scheduledbackup_legacy="${SCHEDULEDBACKUP_LEGACY_TEMPLATE:-${legacy_templates_dir}/scheduledbackup-legacy.yaml}"
 
-# Check whether a CRD exists in the given cluster context
-check_crd_existence() {
-    local context="$1"
-    local crd="$2"
-    kubectl --context "${context}" get crd "${crd}" &>/dev/null
-}
-
 legacy=false
 if [ "${LEGACY:-}" = "true" ]; then
     legacy=true
@@ -94,6 +91,11 @@ fi
 trunk=0
 if [ "${TRUNK:-}" = "true" ]; then
     trunk=1
+fi
+
+requirements_only=false
+if [ "${REQUIREMENTS_ONLY:-}" = "true" ]; then
+    requirements_only=true
 fi
 
 dry_run=false
@@ -299,66 +301,15 @@ for region in "${REGIONS[@]}"; do
     fi
 
     if ! ${dry_run}; then
-        if check_crd_existence "${CONTEXT_NAME}" clusters.postgresql.cnpg.io; then
-            echo "❌ CloudNativePG is already deployed in region '${region}' (context: ${CONTEXT_NAME})."
-            echo "   Run './demo/teardown.sh' first if you want to redeploy."
-            exit 1
-        fi
+        deploy_cnpg_requirements "${region}" "${CONTEXT_NAME}"
     fi
 
-    if ! ${dry_run}; then
-        if [ "${trunk}" -eq 1 ]; then
-            # Deploy CloudNativePG operator (trunk - main branch)
-            curl -sSfL \
-                https://raw.githubusercontent.com/cloudnative-pg/artifacts/main/manifests/operator-manifest.yaml | \
-                kubectl --context "${CONTEXT_NAME}" apply -f - --server-side
-        else
-            # Deploy CloudNativePG operator (latest stable release)
-            kubectl apply --server-side \
-                --context "${CONTEXT_NAME}" \
-                -f "https://raw.githubusercontent.com/cloudnative-pg/cloudnative-pg/release-${CNPG_RELEASE_BRANCH}/releases/cnpg-${CNPG_VERSION_BARE}.yaml"
+    # REQUIREMENTS_ONLY stops here, before any cluster-specific resources are generated
+    if ${requirements_only}; then
+        if ! ${dry_run}; then
+            echo "✅ Requirements deployment for '${region}' complete in $(format_duration $((SECONDS - region_start)))."
         fi
-
-        # Pin the operator to the control-plane node. The playground taints the
-        # postgres nodes and reserves infra/app nodes for workloads, so the
-        # control-plane is the natural home for the operator in this demo.
-        kubectl --context "${CONTEXT_NAME}" -n cnpg-system \
-            patch deployment cnpg-controller-manager \
-            --type='merge' \
-            --patch='{"spec":{"template":{"spec":{"affinity":{"nodeAffinity":{"requiredDuringSchedulingIgnoredDuringExecution":{"nodeSelectorTerms":[{"matchExpressions":[{"key":"node-role.kubernetes.io/control-plane","operator":"Exists"}]}]}}},"tolerations":[{"key":"node-role.kubernetes.io/control-plane","operator":"Exists"}]}}}}'
-
-        # Wait for CNPG deployment to complete
-        kubectl --context "${CONTEXT_NAME}" rollout status deployment \
-            -n cnpg-system cnpg-controller-manager
-        echo "📦 CloudNativePG: $(kubectl --context "${CONTEXT_NAME}" get deployment cnpg-controller-manager \
-            -n cnpg-system -o jsonpath='{.spec.template.spec.containers[0].image}')"
-
-        # Deploy cert-manager
-        kubectl apply --context "${CONTEXT_NAME}" -f \
-            "https://github.com/cert-manager/cert-manager/releases/download/${CERT_MANAGER_VERSION}/cert-manager.yaml"
-
-        # Wait for cert-manager deployment to complete
-        kubectl rollout --context "${CONTEXT_NAME}" status deployment \
-            -n cert-manager
-        cmctl check api --wait=2m --context "${CONTEXT_NAME}"
-        echo "📦 cert-manager: $(kubectl --context "${CONTEXT_NAME}" get deployment cert-manager \
-            -n cert-manager -o jsonpath='{.spec.template.spec.containers[0].image}')"
-
-        if [ "${trunk}" -eq 1 ]; then
-            # Deploy Barman Cloud Plugin (trunk)
-            kubectl apply --context "${CONTEXT_NAME}" -f \
-                https://raw.githubusercontent.com/cloudnative-pg/plugin-barman-cloud/refs/heads/main/manifest.yaml
-        else
-            # Deploy Barman Cloud Plugin (latest stable)
-            kubectl apply --context "${CONTEXT_NAME}" -f \
-                "https://github.com/cloudnative-pg/plugin-barman-cloud/releases/download/${BARMAN_CLOUD_PLUGIN_VERSION}/manifest.yaml"
-        fi
-
-        # Wait for Barman Cloud Plugin deployment to complete
-        kubectl rollout --context "${CONTEXT_NAME}" status deployment \
-            -n cnpg-system barman-cloud
-        echo "📦 Barman Cloud Plugin: $(kubectl --context "${CONTEXT_NAME}" get deployment barman-cloud \
-            -n cnpg-system -o jsonpath='{.spec.template.spec.containers[0].image}')"
+        continue
     fi
 
     # Create the Barman ObjectStore CRs for all regions (plugin mode only)
