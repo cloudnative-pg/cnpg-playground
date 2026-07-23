@@ -1,0 +1,7 @@
+  # See https://cloudnative-pg.io/documentation/current/image_catalog/
+  imageCatalogRef:
+    apiGroup: postgresql.cnpg.io
+    kind: ClusterImageCatalog
+    name: ${IMAGE_CATALOG_NAME}
+    major: ${POSTGRESQL_VERSION}
+

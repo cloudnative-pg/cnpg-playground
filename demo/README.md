@@ -91,9 +91,11 @@ regions, pass them as arguments:
 > command line.
 
 This process takes a few minutes to complete.
-It installs the latest version of CloudNativePG, cert-manager, and the
-[Barman Cloud plugin](https://cloudnative-pg.io/plugin-barman-cloud/),
-followed by the deployment of the PostgreSQL clusters.
+It installs the latest version of CloudNativePG, cert-manager, the
+[Barman Cloud plugin](https://cloudnative-pg.io/plugin-barman-cloud/), and a
+[`ClusterImageCatalog`](https://github.com/cloudnative-pg/artifacts/tree/main/image-catalogs-extensions)
+providing common extensions (pgvector, PostGIS, TimescaleDB, pgaudit,
+wal2json, pg-crash), followed by the deployment of the PostgreSQL clusters.
 
 ### Options
 
@@ -101,12 +103,14 @@ followed by the deployment of the PostgreSQL clusters.
 |----------|---------|-------------|
 | `LEGACY=true` | `false` | Use the legacy in-tree Barman Cloud code instead of the Barman Cloud Plugin |
 | `TRUNK=true` | `false` | Deploy from the `main` branch of both CloudNativePG and the Barman Cloud Plugin |
-| `REQUIREMENTS_ONLY=true` | `false` | Deploy only CloudNativePG, cert-manager, and the Barman Cloud Plugin; skip ObjectStores/Clusters. A later plain run automatically detects and skips already-installed requirements |
+| `REQUIREMENTS_ONLY=true` | `false` | Deploy only CloudNativePG, cert-manager, the Barman Cloud Plugin, and the `ClusterImageCatalog`; skip ObjectStores/Clusters. A later plain run automatically detects and skips already-installed requirements |
+| `IMAGE_CATALOG_URL=<url>` | [`catalog-minimal-trixie.yaml`](https://github.com/cloudnative-pg/artifacts/blob/main/image-catalogs-extensions/catalog-minimal-trixie.yaml) | `ClusterImageCatalog` manifest applied in every region |
+| `IMAGE_CATALOG_NAME=<name>` | `postgresql-minimal-trixie` | Must match `metadata.name` in `IMAGE_CATALOG_URL`; referenced by the Cluster's `imageCatalogRef` (plugin mode) |
+| `POSTGRESQL_VERSION=<major>` | `18` | PostgreSQL major version selected from the catalog, in plugin mode |
 | `DRY_RUN=true` | `false` | Print the generated YAML to stdout without applying it |
 | `OUTPUT_DIR=<path>` | _(unset)_ | Save the generated YAML to `<path>/<region>.yaml` (one file per region) and apply it |
 | `DRY_RUN=true OUTPUT_DIR=<path>` | | Save the generated YAML to files only, without applying |
-| `POSTGRESQL_IMAGE=<image>` | `ghcr.io/cloudnative-pg/postgresql:18-standard-trixie` | PostgreSQL image used in plugin mode |
-| `POSTGRESQL_LEGACY_IMAGE=<image>` | `ghcr.io/cloudnative-pg/postgresql:18-system-trixie` | PostgreSQL image used in legacy mode |
+| `POSTGRESQL_LEGACY_IMAGE=<image>` | `ghcr.io/cloudnative-pg/postgresql:18-system-trixie` | PostgreSQL image used directly (`imageName`) in legacy mode; the catalog only ships minimal images, so legacy mode can't use `imageCatalogRef` |
 | `K8S_CONTEXT_PREFIX` | `kind-` | Prefix of kubectl context names; override when targeting non-Kind clusters |
 | `K8S_NAME` | `k8s-` | Base name of clusters in kubectl context names |
 | `DEBUG=true` | `false` | Enable shell trace output (`set -x`) for debugging |
@@ -127,8 +131,10 @@ fragments without modifying the repository.
 |----------|-------------|
 | `TEMPLATES_DIR=<path>` | Replace the whole templates directory with your own |
 | `CLUSTER_TEMPLATE=<file>` | Override `cluster.yaml` only |
+| `STORAGE_TEMPLATE=<file>` | Override `storage.yaml` (shared by both modes) |
 | `BOOTSTRAP_INITDB_TEMPLATE=<file>` | Override `bootstrap-initdb.yaml` |
 | `BOOTSTRAP_RECOVERY_TEMPLATE=<file>` | Override `bootstrap-recovery.yaml` |
+| `IMAGE_CATALOG_TEMPLATE=<file>` | Override `image-catalog.yaml` (plugin mode's `imageCatalogRef`) |
 | `CLUSTER_PLUGIN_PARAMS_TEMPLATE=<file>` | Override `cluster-plugin-params.yaml` |
 | `REPLICA_SECTION_TEMPLATE=<file>` | Override `replica-section.yaml` |
 | `EXTERNAL_CLUSTER_PLUGIN_TEMPLATE=<file>` | Override `external-cluster-plugin.yaml` |
@@ -141,6 +147,7 @@ Legacy-mode equivalents (used with `LEGACY=true`):
 | Variable | Description |
 |----------|-------------|
 | `CLUSTER_LEGACY_PARAMS_TEMPLATE=<file>` | Override `legacy/cluster-legacy-params.yaml` |
+| `IMAGE_LEGACY_TEMPLATE=<file>` | Override `legacy/image-legacy.yaml` (legacy mode's `imageName`) |
 | `EXTERNAL_CLUSTER_LEGACY_TEMPLATE=<file>` | Override `legacy/external-cluster-legacy.yaml` |
 | `SCHEDULEDBACKUP_LEGACY_TEMPLATE=<file>` | Override `legacy/scheduledbackup-legacy.yaml` |
 

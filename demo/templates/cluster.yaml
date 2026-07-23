@@ -4,7 +4,6 @@ metadata:
   name: pg-${REGION}
 spec:
   instances: 3
-  imageName: ${POSTGRESQL_IMAGE}
 
   storage:
     # Node-local storage backed by the CSI hostpath driver, so each instance can

@@ -20,7 +20,8 @@
 
 #
 # Deployment of the CloudNativePG demo requirements: the CNPG operator,
-# cert-manager, and the Barman Cloud Plugin. Sourced by demo/setup.sh.
+# cert-manager, the Barman Cloud Plugin, and a ClusterImageCatalog (common
+# extensions). Sourced by demo/setup.sh.
 #
 
 # Check whether a CRD exists in the given cluster context
@@ -30,18 +31,19 @@ check_crd_existence() {
     kubectl --context "${context}" get crd "${crd}" &>/dev/null
 }
 
-# Deploy CloudNativePG, cert-manager, and the Barman Cloud Plugin into a
-# single region, unless they are already installed there.
+# Deploy CloudNativePG, cert-manager, the Barman Cloud Plugin, and a
+# ClusterImageCatalog into a single region, unless they are already
+# installed there.
 # Globals used: trunk, CERT_MANAGER_VERSION, CNPG_RELEASE_BRANCH,
-# CNPG_VERSION_BARE, BARMAN_CLOUD_PLUGIN_VERSION (set by scripts/common.sh
-# and demo/setup.sh).
+# CNPG_VERSION_BARE, BARMAN_CLOUD_PLUGIN_VERSION, IMAGE_CATALOG_URL (set by
+# scripts/common.sh and demo/setup.sh).
 deploy_cnpg_requirements() {
     local region="$1"
     local context="$2"
 
     if check_crd_existence "${context}" clusters.postgresql.cnpg.io; then
         echo "ℹ️  CloudNativePG requirements already installed in region '${region}' (context: ${context});" \
-            "skipping operator/cert-manager/Barman Cloud Plugin installation."
+            "skipping operator/cert-manager/Barman Cloud Plugin/ClusterImageCatalog installation."
         return
     fi
 
@@ -70,6 +72,12 @@ deploy_cnpg_requirements() {
         -n cnpg-system cnpg-controller-manager
     echo "📦 CloudNativePG: $(kubectl --context "${context}" get deployment cnpg-controller-manager \
         -n cnpg-system -o jsonpath='{.spec.template.spec.containers[0].image}')"
+
+    # Deploy the ClusterImageCatalog with common extensions (requires the
+    # postgresql.cnpg.io CRDs installed by the operator above)
+    kubectl apply --context "${context}" -f "${IMAGE_CATALOG_URL}"
+    echo "📦 ClusterImageCatalog: $(kubectl --context "${context}" get clusterimagecatalog \
+        -o jsonpath='{.items[*].metadata.name}')"
 
     # Deploy cert-manager
     kubectl apply --context "${context}" -f \
