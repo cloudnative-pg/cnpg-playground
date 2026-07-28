@@ -87,22 +87,21 @@ IMAGE_CATALOG_URL="${IMAGE_CATALOG_URL:-https://raw.githubusercontent.com/cloudn
 # Must match metadata.name in IMAGE_CATALOG_URL; referenced by Cluster.spec.imageCatalogRef
 IMAGE_CATALOG_NAME="${IMAGE_CATALOG_NAME:-postgresql-minimal-trixie}"
 
-# CSI hostpath driver + volume snapshot support (distributed deployment).
-# scripts/csi-hostpath.sh applies the upstream kubernetes-csi manifests straight
-# from these pinned versions and layers only small local deltas on top (see
-# k8s/csi-hostpath/), so each PostgreSQL instance gets node-local storage with
-# per-node snapshot support.
+# CSI hostpath driver + volume snapshot support.
+# scripts/csi-hostpath.sh applies the upstream kubernetes-csi single-node
+# deployment verbatim from these pinned versions, giving the playground a single
+# shared-storage (SAN-like) backend with volume snapshot support. It is deployed
+# as an available capability; the demo PostgreSQL clusters do not use it by
+# default (they keep the cluster's default StorageClass).
 # renovate: datasource=github-releases depName=kubernetes-csi/csi-driver-host-path
 CSI_DRIVER_HOST_PATH_VERSION="${CSI_DRIVER_HOST_PATH_VERSION:-v1.17.0}"
 # renovate: datasource=github-releases depName=kubernetes-csi/external-snapshotter
 EXTERNAL_SNAPSHOTTER_VERSION="${EXTERNAL_SNAPSHOTTER_VERSION:-v8.4.0}"
 # renovate: datasource=github-releases depName=kubernetes-csi/external-provisioner
 EXTERNAL_PROVISIONER_VERSION="${EXTERNAL_PROVISIONER_VERSION:-v6.1.0}"
-# csi-snapshotter sidecar added to the node plugin for distributed snapshotting.
-# renovate: datasource=docker depName=registry.k8s.io/sig-storage/csi-snapshotter
-CSI_SNAPSHOTTER_IMAGE="${CSI_SNAPSHOTTER_IMAGE:-registry.k8s.io/sig-storage/csi-snapshotter:v8.2.0}"
-# StorageClass exposed by the driver; also the class PostgreSQL clusters use by
-# default (see demo/templates/cluster.yaml and demo/setup.sh STORAGE_CLASS).
-CSI_STORAGE_CLASS="${CSI_STORAGE_CLASS:-csi-hostpath-fast}"
+# renovate: datasource=github-releases depName=kubernetes-csi/external-attacher
+EXTERNAL_ATTACHER_VERSION="${EXTERNAL_ATTACHER_VERSION:-v4.10.0}"
+# renovate: datasource=github-releases depName=kubernetes-csi/external-resizer
+EXTERNAL_RESIZER_VERSION="${EXTERNAL_RESIZER_VERSION:-v2.0.0}"
 
 source "${REPO_ROOT}/scripts/funcs_regions.sh"
