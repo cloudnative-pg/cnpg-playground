@@ -48,6 +48,7 @@ deploy_csi_host_path() {
     local prov_base="https://raw.githubusercontent.com/kubernetes-csi/external-provisioner/${EXTERNAL_PROVISIONER_VERSION}"
     local attacher_base="https://raw.githubusercontent.com/kubernetes-csi/external-attacher/${EXTERNAL_ATTACHER_VERSION}"
     local resizer_base="https://raw.githubusercontent.com/kubernetes-csi/external-resizer/${EXTERNAL_RESIZER_VERSION}"
+    local health_monitor_base="https://raw.githubusercontent.com/kubernetes-csi/external-health-monitor/${EXTERNAL_HEALTH_MONITOR_VERSION}"
     local hostpath_dir="${csi_base}/deploy/kubernetes-1.30/hostpath"
 
     echo "🗄️  Deploying CSI hostpath driver with volume snapshot support (single node)..."
@@ -64,12 +65,17 @@ deploy_csi_host_path() {
     kubectl apply -f "${snap_base}/deploy/kubernetes/snapshot-controller/setup-snapshot-controller.yaml"
 
     # 3. Sidecar RBAC — provides the external-*-runner ClusterRoles the plugin's
-    #    ServiceAccount is bound to.
-    echo "   - Installing provisioner/attacher/resizer/snapshotter RBAC"
+    #    ServiceAccount is bound to. Matches upstream's own deploy-hostpath.sh
+    #    default RBAC set (provisioner, attacher, snapshotter, resizer,
+    #    health-monitor); without the last one, the plugin's
+    #    csi-external-health-monitor-controller sidecar runs but every one of its
+    #    API calls is denied.
+    echo "   - Installing provisioner/attacher/resizer/snapshotter/health-monitor RBAC"
     kubectl apply -f "${prov_base}/deploy/kubernetes/rbac.yaml"
     kubectl apply -f "${attacher_base}/deploy/kubernetes/rbac.yaml"
     kubectl apply -f "${resizer_base}/deploy/kubernetes/rbac.yaml"
     kubectl apply -f "${snap_base}/deploy/kubernetes/csi-snapshotter/rbac-csi-snapshotter.yaml"
+    kubectl apply -f "${health_monitor_base}/deploy/kubernetes/external-health-monitor-controller/rbac.yaml"
 
     # 4. Driver: CSIDriver + the single-node plugin (SA + bindings + StatefulSet).
     echo "   - Deploying the driver and node plugin (csi-driver-host-path ${CSI_DRIVER_HOST_PATH_VERSION})"
