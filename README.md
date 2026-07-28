@@ -103,7 +103,7 @@ override the default playground configuration:
 | `RUSTFS_BASE_PORT` | `9001` | Host port for the first RustFS console; increments by one per region |
 | `K8S_NAME` | `k8s-` | Base name used when creating Kind clusters |
 | `K8S_CONTEXT_PREFIX` | `kind-` | Prefix added to Kind cluster names to form kubectl context names |
-| `DEPLOY_CSI_HOSTPATH` | `true` | Deploy the CSI hostpath driver + volume snapshot support in every region |
+| `DEPLOY_CSI_HOSTPATH` | `false` | Deploy the single-node CSI hostpath driver with volume snapshot support |
 
 Example:
 
@@ -152,37 +152,46 @@ In this example:
   for application workloads, and `postgres` for PostgreSQL databases. Each node
   runs Kubernetes version `v1.34.0`.
 
-### Volume Snapshots
+### Volume Snapshots (optional)
 
-Each region ships with the [CSI hostpath driver](https://github.com/kubernetes-csi/csi-driver-host-path)
-and volume snapshot support, so you can experiment with CloudNativePG's
-snapshot-based backup and recovery.
-
-The driver uses its *distributed* mode: it runs on each `postgres`-role node
-(one DaemonSet pod per node) and provisions volumes locally, so the three
-PostgreSQL instances keep their spread across separate nodes while each instance
-gets node-local storage that can be snapshotted independently. It exposes a
-`csi-hostpath-fast` StorageClass (with `volumeBindingMode: WaitForFirstConsumer`)
-and a default `csi-hostpath-snapclass` VolumeSnapshotClass.
-
-The demo PostgreSQL clusters use `csi-hostpath-fast` by default (override with
-`STORAGE_CLASS` when running `demo/setup.sh`; set `STORAGE_CLASS=""` to use each
-cluster's default StorageClass). Kind's `standard` (local-path) class remains the
-cluster default and is not modified.
-
-When the clusters run on `csi-hostpath-fast`, `demo/setup.sh` also configures
-`spec.backup.volumeSnapshot` with the `csi-hostpath-snapclass` VolumeSnapshotClass
-(WAL archiving stays on the object store for point-in-time recovery). You can take
-a snapshot-based backup on demand with:
+The playground can optionally deploy the
+[CSI hostpath driver](https://github.com/kubernetes-csi/csi-driver-host-path)
+with volume snapshot support, so you can experiment with CloudNativePG's
+snapshot-based backup and recovery. It is **disabled by default** — enable it per
+region with:
 
 ```bash
-kubectl cnpg backup pg-eu --method volumeSnapshot
+DEPLOY_CSI_HOSTPATH=true ./scripts/setup.sh
 ```
 
-To skip this and keep the clusters on `standard` local-path storage only, run:
+The hostpath driver only works reliably when all volumes live on a single node
+(see [this comment on kubernetes-csi/csi-driver-host-path#651](https://github.com/kubernetes-csi/csi-driver-host-path/issues/651#issuecomment-4328654241):
+with a per-node deployment a snapshot restore can be scheduled onto a node that
+does not own the snapshot data and deadlocks). The playground therefore deploys
+the upstream **single-node** driver as-is. Its single plugin pod lands on one
+worker node, and every volume and snapshot lives there, so backup and restore
+always co-locate — at the cost of a single point of failure: there's no
+redundancy, and losing that node loses its data. It exposes a `csi-hostpath-sc`
+StorageClass and a `csi-hostpath-snapclass` VolumeSnapshotClass.
+
+The driver is provided as an **available capability** — the demo clusters do not
+use it and keep the default StorageClass. **It only supports a single-instance
+Cluster**: since every volume lives on the plugin's one node, CloudNativePG's
+required cross-node pod anti-affinity (used by the demo clusters, see
+`demo/templates/cluster.yaml`) cannot be satisfied with `instances` greater than
+1. To exploit it, deploy your own single-instance cluster using
+`storageClass: csi-hostpath-sc`, scheduled (via `nodeSelector`) onto the node
+running the plugin — find it with:
 
 ```bash
-DEPLOY_CSI_HOSTPATH=false ./scripts/setup.sh
+kubectl get pods -n default -l app.kubernetes.io/name=csi-hostpathplugin -o wide
+```
+
+For example, deploy only the CloudNativePG requirements and then create your own
+cluster:
+
+```bash
+REQUIREMENTS_ONLY=true ./demo/setup.sh
 ```
 
 ### Cleaning Up the Environment

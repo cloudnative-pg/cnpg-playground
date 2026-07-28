@@ -54,22 +54,6 @@ legacy_templates_dir="${templates_dir}/legacy"
 POSTGRESQL_VERSION="${POSTGRESQL_VERSION:-18}"
 POSTGRESQL_LEGACY_IMAGE="${POSTGRESQL_LEGACY_IMAGE:-ghcr.io/cloudnative-pg/postgresql:18-system-trixie}"
 
-# StorageClass for the PostgreSQL clusters. Defaults to the CSI hostpath class
-# deployed by scripts/setup.sh (node-local storage with volume snapshot support).
-# Set STORAGE_CLASS="" to use each cluster's default StorageClass instead.
-STORAGE_CLASS="${STORAGE_CLASS-${CSI_STORAGE_CLASS:-csi-hostpath-fast}}"
-
-# VolumeSnapshotClass for snapshot-based backups. Only meaningful when the
-# clusters use the CSI hostpath StorageClass (the class shipped with the driver);
-# with any other/default StorageClass there is no snapshot-capable storage, so the
-# backup.volumeSnapshot block is omitted. Set VOLUME_SNAPSHOT_CLASS="" to disable,
-# or to a custom VolumeSnapshotClass name.
-if [ -n "${STORAGE_CLASS}" ] && [ "${STORAGE_CLASS}" = "${CSI_STORAGE_CLASS:-csi-hostpath-fast}" ]; then
-    VOLUME_SNAPSHOT_CLASS="${VOLUME_SNAPSHOT_CLASS-csi-hostpath-snapclass}"
-else
-    VOLUME_SNAPSHOT_CLASS="${VOLUME_SNAPSHOT_CLASS-}"
-fi
-
 # Template file overrides — set any of these to replace the corresponding built-in fragment
 tmpl_cluster="${CLUSTER_TEMPLATE:-${templates_dir}/cluster.yaml}"
 tmpl_storage="${STORAGE_TEMPLATE:-${templates_dir}/storage.yaml}"
@@ -80,7 +64,6 @@ tmpl_cluster_plugin_params="${CLUSTER_PLUGIN_PARAMS_TEMPLATE:-${templates_dir}/c
 tmpl_replica_section="${REPLICA_SECTION_TEMPLATE:-${templates_dir}/replica-section.yaml}"
 tmpl_external_cluster_plugin="${EXTERNAL_CLUSTER_PLUGIN_TEMPLATE:-${templates_dir}/external-cluster-plugin.yaml}"
 tmpl_scheduledbackup_plugin="${SCHEDULEDBACKUP_PLUGIN_TEMPLATE:-${templates_dir}/scheduledbackup-plugin.yaml}"
-tmpl_backup_volumesnapshot="${BACKUP_VOLUMESNAPSHOT_TEMPLATE:-${templates_dir}/backup-volumesnapshot.yaml}"
 tmpl_objectstore="${OBJECTSTORE_TEMPLATE:-${templates_dir}/objectstore.yaml}"
 tmpl_podmonitor="${PODMONITOR_TEMPLATE:-${templates_dir}/podmonitor.yaml}"
 tmpl_cluster_legacy_params="${CLUSTER_LEGACY_PARAMS_TEMPLATE:-${legacy_templates_dir}/cluster-legacy-params.yaml}"
@@ -179,7 +162,6 @@ kubectl_apply() {
 # YAML generators — each function writes a complete YAML stream to stdout.
 # The caller is responsible for piping to kubectl.
 # Template files use ${REGION}, ${PRIMARY_REGION}, ${SOURCE_REGION},
-# ${STORAGE_CLASS}, and ${VOLUME_SNAPSHOT_CLASS},
 # ${IMAGE_CATALOG_NAME}, ${POSTGRESQL_VERSION}, and ${POSTGRESQL_LEGACY_IMAGE}
 # placeholders; envsubst substitutes only those
 # variables (explicit list prevents accidental expansion of env vars).
@@ -204,8 +186,8 @@ generate_cluster_yaml_plugin() {
     source_region=$(get_source_region "${region}")
 
     # Cluster header: apiVersion through affinity
-    REGION="${region}" STORAGE_CLASS="${STORAGE_CLASS}" \
-    envsubst '${REGION} ${STORAGE_CLASS}' < "${tmpl_cluster}"
+    REGION="${region}" \
+    envsubst '${REGION}' < "${tmpl_cluster}"
 
     # Storage (data + WAL volumes)
     cat "${tmpl_storage}"
@@ -225,14 +207,6 @@ generate_cluster_yaml_plugin() {
     # PostgreSQL parameters and Barman Cloud Plugin configuration
     REGION="${region}" \
     envsubst '${REGION}' < "${tmpl_cluster_plugin_params}"
-
-    # Volume snapshot backup config (only when using snapshot-capable storage).
-    # Plugin mode has no spec.backup otherwise, so open it here.
-    if [ -n "${VOLUME_SNAPSHOT_CLASS}" ]; then
-        printf '  backup:\n'
-        VOLUME_SNAPSHOT_CLASS="${VOLUME_SNAPSHOT_CLASS}" \
-        envsubst '${VOLUME_SNAPSHOT_CLASS}' < "${tmpl_backup_volumesnapshot}"
-    fi
 
     # Distributed topology replica section — only for multi-region setups
     if [ "${num_regions}" -gt 1 ]; then
@@ -258,8 +232,8 @@ generate_cluster_yaml_legacy() {
     local source_region
     source_region=$(get_source_region "${region}")
 
-    REGION="${region}" STORAGE_CLASS="${STORAGE_CLASS}" \
-    envsubst '${REGION} ${STORAGE_CLASS}' < "${tmpl_cluster}"
+    REGION="${region}" \
+    envsubst '${REGION}' < "${tmpl_cluster}"
 
     # Storage (data + WAL volumes)
     cat "${tmpl_storage}"
@@ -277,14 +251,6 @@ generate_cluster_yaml_legacy() {
 
     REGION="${region}" \
     envsubst '${REGION}' < "${tmpl_cluster_legacy_params}"
-
-    # Volume snapshot backup config (only when using snapshot-capable storage).
-    # Legacy mode already opened spec.backup above, so this appends volumeSnapshot
-    # as a sibling of barmanObjectStore — it MUST stay adjacent to the params above.
-    if [ -n "${VOLUME_SNAPSHOT_CLASS}" ]; then
-        VOLUME_SNAPSHOT_CLASS="${VOLUME_SNAPSHOT_CLASS}" \
-        envsubst '${VOLUME_SNAPSHOT_CLASS}' < "${tmpl_backup_volumesnapshot}"
-    fi
 
     if [ "${num_regions}" -gt 1 ]; then
         REGION="${region}" PRIMARY_REGION="${primary_region}" SOURCE_REGION="${source_region}" \

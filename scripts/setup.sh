@@ -38,8 +38,9 @@ source "$(dirname "$0")/common.sh"
 # Provides deploy_csi_host_path()
 source "$(dirname "$0")/csi-hostpath.sh"
 
-# Deploy the CSI hostpath driver + volume snapshot support unless disabled.
-DEPLOY_CSI_HOSTPATH="${DEPLOY_CSI_HOSTPATH:-true}"
+# Optionally deploy the CSI hostpath driver + volume snapshot support (single
+# node). Disabled by default; opt in with DEPLOY_CSI_HOSTPATH=true.
+DEPLOY_CSI_HOSTPATH="${DEPLOY_CSI_HOSTPATH:-false}"
 
 echo "✅ Prerequisites met. Using '$CONTAINER_PROVIDER' as the container provider."
 
@@ -116,7 +117,7 @@ for region in "${REGIONS[@]}"; do
     if [ "${DEPLOY_CSI_HOSTPATH}" == "true" ]; then
         deploy_csi_host_path
     else
-        echo "⏭️  Skipping CSI hostpath driver deployment (DEPLOY_CSI_HOSTPATH=${DEPLOY_CSI_HOSTPATH})."
+        echo "⏭️  Skipping CSI hostpath driver (set DEPLOY_CSI_HOSTPATH=true to enable)."
     fi
 
     echo "🌐 Connecting RustFS to the Kind network..."
