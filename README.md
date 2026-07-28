@@ -165,18 +165,28 @@ DEPLOY_CSI_HOSTPATH=true ./scripts/setup.sh
 ```
 
 The hostpath driver only works reliably when all volumes live on a single node
-(see [kubernetes-csi/csi-driver-host-path#651](https://github.com/kubernetes-csi/csi-driver-host-path/issues/651):
+(see [this comment on kubernetes-csi/csi-driver-host-path#651](https://github.com/kubernetes-csi/csi-driver-host-path/issues/651#issuecomment-4328654241):
 with a per-node deployment a snapshot restore can be scheduled onto a node that
 does not own the snapshot data and deadlocks). The playground therefore deploys
 the upstream **single-node** driver as-is. Its single plugin pod lands on one
-worker node, and every volume and snapshot lives there — a SAN-like single
-shared-storage backend where backup and restore always co-locate. It exposes a
-`csi-hostpath-sc` StorageClass and a `csi-hostpath-snapclass` VolumeSnapshotClass.
+worker node, and every volume and snapshot lives there, so backup and restore
+always co-locate — at the cost of a single point of failure: there's no
+redundancy, and losing that node loses its data. It exposes a `csi-hostpath-sc`
+StorageClass and a `csi-hostpath-snapclass` VolumeSnapshotClass.
 
 The driver is provided as an **available capability** — the demo clusters do not
-use it and keep the default StorageClass. To exploit it, deploy your own cluster
-using `storageClass: csi-hostpath-sc`, scheduled onto the node running the plugin
-(find it with `kubectl get pods -l app.kubernetes.io/name=csi-hostpathplugin -o wide`).
+use it and keep the default StorageClass. **It only supports a single-instance
+Cluster**: since every volume lives on the plugin's one node, CloudNativePG's
+required cross-node pod anti-affinity (used by the demo clusters, see
+`demo/templates/cluster.yaml`) cannot be satisfied with `instances` greater than
+1. To exploit it, deploy your own single-instance cluster using
+`storageClass: csi-hostpath-sc`, scheduled (via `nodeSelector`) onto the node
+running the plugin — find it with:
+
+```bash
+kubectl get pods -n default -l app.kubernetes.io/name=csi-hostpathplugin -o wide
+```
+
 For example, deploy only the CloudNativePG requirements and then create your own
 cluster:
 
