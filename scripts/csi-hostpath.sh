@@ -49,7 +49,7 @@ deploy_csi_host_path() {
     local attacher_base="https://raw.githubusercontent.com/kubernetes-csi/external-attacher/${EXTERNAL_ATTACHER_VERSION}"
     local resizer_base="https://raw.githubusercontent.com/kubernetes-csi/external-resizer/${EXTERNAL_RESIZER_VERSION}"
     local health_monitor_base="https://raw.githubusercontent.com/kubernetes-csi/external-health-monitor/${EXTERNAL_HEALTH_MONITOR_VERSION}"
-    local hostpath_dir="${csi_base}/deploy/kubernetes-1.30/hostpath"
+    local hostpath_dir="${csi_base}/deploy/kubernetes-1.34/hostpath"
 
     echo "🗄️  Deploying CSI hostpath driver with volume snapshot support (single node)..."
 
