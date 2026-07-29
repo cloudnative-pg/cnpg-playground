@@ -94,7 +94,7 @@ IMAGE_CATALOG_NAME="${IMAGE_CATALOG_NAME:-postgresql-minimal-trixie}"
 # as an available capability; the demo PostgreSQL clusters do not use it by
 # default (they keep the cluster's default StorageClass).
 # renovate: datasource=github-releases depName=kubernetes-csi/csi-driver-host-path
-CSI_DRIVER_HOST_PATH_VERSION="${CSI_DRIVER_HOST_PATH_VERSION:-v1.17.0}"
+CSI_DRIVER_HOST_PATH_VERSION="${CSI_DRIVER_HOST_PATH_VERSION:-v1.18.0}"
 # renovate: datasource=github-releases depName=kubernetes-csi/external-snapshotter
 EXTERNAL_SNAPSHOTTER_VERSION="${EXTERNAL_SNAPSHOTTER_VERSION:-v8.6.0}"
 # renovate: datasource=github-releases depName=kubernetes-csi/external-provisioner
