@@ -46,6 +46,10 @@
         pkgs.k9s
         pkgs.lazydocker
         pkgs.btop
+        pkgs.shellcheck
+        pkgs.shfmt
+        pkgs.bats
+        pkgs.yq-go
      ];
     };
   });
