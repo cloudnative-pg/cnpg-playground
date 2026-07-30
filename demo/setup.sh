@@ -39,12 +39,15 @@ set -eu
 [[ "${DEBUG:-false}" == "true" ]] && set -x
 
 # Source the common setup script
+# shellcheck source=scripts/common.sh
 source "$(cd "$(dirname "$0")/.." && pwd)/scripts/common.sh"
 
 # Source the CNPG operator/cert-manager/Barman Cloud Plugin deployment function
+# shellcheck source=demo/funcs_requirements.sh
 source "${REPO_ROOT}/demo/funcs_requirements.sh"
 
 # Source the YAML-rendering helper functions (format_duration, get_source_region)
+# shellcheck source=demo/funcs_render.sh
 source "${REPO_ROOT}/demo/funcs_render.sh"
 
 kube_config_path="${KUBE_CONFIG_PATH}"
@@ -130,7 +133,7 @@ kubectl_apply() {
 
     if [ -n "${output_dir}" ]; then
         # OUTPUT_DIR is set: write to file (DRY_RUN skips kubectl apply)
-        printf '%s\n---\n' "${input}" >> "${output_dir}/${region}.yaml"
+        printf '%s\n---\n' "${input}" >>"${output_dir}/${region}.yaml"
     elif ${dry_run}; then
         # DRY_RUN without OUTPUT_DIR: print to stdout
         printf '%s\n---\n' "${input}"
@@ -151,13 +154,13 @@ kubectl_apply() {
 generate_objectstore_yaml() {
     local region="$1"
     REGION="${region}" \
-    envsubst '${REGION}' < "${tmpl_objectstore}"
+        envsubst '${REGION}' <"${tmpl_objectstore}"
 }
 
 generate_podmonitor_yaml() {
     local region="$1"
     REGION="${region}" \
-    envsubst '${REGION}' < "${tmpl_podmonitor}"
+        envsubst '${REGION}' <"${tmpl_podmonitor}"
 }
 
 # Emit a Cluster + ScheduledBackup stream using the Barman Cloud Plugin
@@ -168,43 +171,43 @@ generate_cluster_yaml_plugin() {
 
     # Cluster header: apiVersion through affinity
     REGION="${region}" \
-    envsubst '${REGION}' < "${tmpl_cluster}"
+        envsubst '${REGION}' <"${tmpl_cluster}"
 
     # Storage (data + WAL volumes)
     cat "${tmpl_storage}"
 
     # ClusterImageCatalog reference (see demo/funcs_requirements.sh for the catalog itself)
     IMAGE_CATALOG_NAME="${IMAGE_CATALOG_NAME}" POSTGRESQL_VERSION="${POSTGRESQL_VERSION}" \
-    envsubst '${IMAGE_CATALOG_NAME} ${POSTGRESQL_VERSION}' < "${tmpl_image_catalog}"
+        envsubst '${IMAGE_CATALOG_NAME} ${POSTGRESQL_VERSION}' <"${tmpl_image_catalog}"
 
     # Bootstrap: initdb for the primary (or single-region); recovery for replicas
     if [ "${region}" = "${primary_region}" ] || [ "${num_regions}" -eq 1 ]; then
         cat "${tmpl_bootstrap_initdb}"
     else
         PRIMARY_REGION="${primary_region}" \
-        envsubst '${PRIMARY_REGION}' < "${tmpl_bootstrap_recovery}"
+            envsubst '${PRIMARY_REGION}' <"${tmpl_bootstrap_recovery}"
     fi
 
     # PostgreSQL parameters and Barman Cloud Plugin configuration
     REGION="${region}" \
-    envsubst '${REGION}' < "${tmpl_cluster_plugin_params}"
+        envsubst '${REGION}' <"${tmpl_cluster_plugin_params}"
 
     # Distributed topology replica section — only for multi-region setups
     if [ "${num_regions}" -gt 1 ]; then
         REGION="${region}" PRIMARY_REGION="${primary_region}" SOURCE_REGION="${source_region}" \
-        envsubst '${REGION} ${PRIMARY_REGION} ${SOURCE_REGION}' < "${tmpl_replica_section}"
+            envsubst '${REGION} ${PRIMARY_REGION} ${SOURCE_REGION}' <"${tmpl_replica_section}"
     fi
 
     # External cluster references — one entry per region
     printf '  externalClusters:\n'
     local r
     for r in "${REGIONS[@]}"; do
-        REGION="${r}" envsubst '${REGION}' < "${tmpl_external_cluster_plugin}"
+        REGION="${r}" envsubst '${REGION}' <"${tmpl_external_cluster_plugin}"
     done
 
     # ScheduledBackup document
     REGION="${region}" \
-    envsubst '${REGION}' < "${tmpl_scheduledbackup_plugin}"
+        envsubst '${REGION}' <"${tmpl_scheduledbackup_plugin}"
 }
 
 # Emit a Cluster + ScheduledBackup stream using in-tree (legacy) Barman configuration
@@ -214,38 +217,38 @@ generate_cluster_yaml_legacy() {
     source_region=$(get_source_region "${region}" "${REGIONS[@]}")
 
     REGION="${region}" \
-    envsubst '${REGION}' < "${tmpl_cluster}"
+        envsubst '${REGION}' <"${tmpl_cluster}"
 
     # Storage (data + WAL volumes)
     cat "${tmpl_storage}"
 
     # Direct image reference — no catalog available for legacy/system images
     POSTGRESQL_LEGACY_IMAGE="${POSTGRESQL_LEGACY_IMAGE}" \
-    envsubst '${POSTGRESQL_LEGACY_IMAGE}' < "${tmpl_image_legacy}"
+        envsubst '${POSTGRESQL_LEGACY_IMAGE}' <"${tmpl_image_legacy}"
 
     if [ "${region}" = "${primary_region}" ] || [ "${num_regions}" -eq 1 ]; then
         cat "${tmpl_bootstrap_initdb}"
     else
         PRIMARY_REGION="${primary_region}" \
-        envsubst '${PRIMARY_REGION}' < "${tmpl_bootstrap_recovery}"
+            envsubst '${PRIMARY_REGION}' <"${tmpl_bootstrap_recovery}"
     fi
 
     REGION="${region}" \
-    envsubst '${REGION}' < "${tmpl_cluster_legacy_params}"
+        envsubst '${REGION}' <"${tmpl_cluster_legacy_params}"
 
     if [ "${num_regions}" -gt 1 ]; then
         REGION="${region}" PRIMARY_REGION="${primary_region}" SOURCE_REGION="${source_region}" \
-        envsubst '${REGION} ${PRIMARY_REGION} ${SOURCE_REGION}' < "${tmpl_replica_section}"
+            envsubst '${REGION} ${PRIMARY_REGION} ${SOURCE_REGION}' <"${tmpl_replica_section}"
     fi
 
     printf '  externalClusters:\n'
     local r
     for r in "${REGIONS[@]}"; do
-        REGION="${r}" envsubst '${REGION}' < "${tmpl_external_cluster_legacy}"
+        REGION="${r}" envsubst '${REGION}' <"${tmpl_external_cluster_legacy}"
     done
 
     REGION="${region}" \
-    envsubst '${REGION}' < "${tmpl_scheduledbackup_legacy}"
+        envsubst '${REGION}' <"${tmpl_scheduledbackup_legacy}"
 }
 
 # ---------------------------------------------------------------------------
@@ -264,7 +267,7 @@ for region in "${REGIONS[@]}"; do
 
     # Initialise the per-region output file (clears any previous run)
     if [ -n "${output_dir}" ]; then
-        : > "${output_dir}/${region}.yaml"
+        : >"${output_dir}/${region}.yaml"
     fi
 
     if ! ${dry_run}; then

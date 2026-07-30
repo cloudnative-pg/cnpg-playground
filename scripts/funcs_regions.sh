@@ -34,7 +34,7 @@ set -euo pipefail
 set_regions() {
     if [ $# -eq 0 ]; then
         REGIONS=("eu" "na")
-        echo "❌ No region provided, using the default regions "eu" "na"..."
+        echo '❌ No region provided, using the default regions "eu" "na"...'
     else
         REGIONS=("$@")
         echo "🔎 Using the provided regions: ${REGIONS[*]}"
@@ -49,12 +49,12 @@ detect_running_regions() {
     else
         echo "🔎 Auto-detecting all active playground regions..."
         # The '|| true' prevents the script from exiting if grep finds no matches.
-        REGIONS=($(kind get clusters | grep "^${K8S_BASE_NAME}" | sed "s/^${K8S_BASE_NAME}//" || true))
+        mapfile -t REGIONS < <(kind get clusters | grep "^${K8S_BASE_NAME}" | sed "s/^${K8S_BASE_NAME}//" || true)
         if [ ${#REGIONS[@]} -gt 0 ]; then
             echo "✅ Found regions: ${REGIONS[*]}"
-	else
+        else
             echo "✅ No region detected"
-	fi
+        fi
     fi
 }
 

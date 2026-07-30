@@ -29,6 +29,7 @@ set -u
 [[ "${DEBUG:-false}" == "true" ]] && set -x
 
 # Source the common setup script
+# shellcheck source=scripts/common.sh
 source "$(cd "$(dirname "$0")/.." && pwd)/scripts/common.sh"
 
 kube_config_path="${KUBE_CONFIG_PATH}"

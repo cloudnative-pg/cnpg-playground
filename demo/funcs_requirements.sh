@@ -47,10 +47,11 @@ deploy_cnpg_requirements() {
         return
     fi
 
+    # shellcheck disable=SC2154 # trunk is set by demo/setup.sh
     if [ "${trunk}" -eq 1 ]; then
         # Deploy CloudNativePG operator (trunk - main branch)
         curl -sSfL \
-            https://raw.githubusercontent.com/cloudnative-pg/artifacts/main/manifests/operator-manifest.yaml | \
+            https://raw.githubusercontent.com/cloudnative-pg/artifacts/main/manifests/operator-manifest.yaml |
             kubectl --context "${context}" apply -f - --server-side
     else
         # Deploy CloudNativePG operator (latest stable release)

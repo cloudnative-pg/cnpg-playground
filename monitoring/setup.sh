@@ -28,6 +28,7 @@
 #
 
 # Source the common setup script
+# shellcheck source=scripts/common.sh
 source "$(cd "$(dirname "$0")/.." && pwd)/scripts/common.sh"
 
 # --- Main Logic ---
@@ -42,44 +43,42 @@ for region in "${REGIONS[@]}"; do
     echo " 🔥 Provisioning Prometheus resources for region: ${region}"
     echo "-------------------------------------------------------------"
 
-    K8S_CLUSTER_NAME=$(get_cluster_name "${region}")
     CONTEXT_NAME=$(get_cluster_context "${region}")
 
-# Deploy the Prometheus operator in the playground Kubernetes clusters
+    # Deploy the Prometheus operator in the playground Kubernetes clusters
     kubectl --context ${CONTEXT_NAME} create ns prometheus-operator || true
-    kubectl kustomize ${REPO_ROOT}/monitoring/prometheus-operator | \
-      kubectl --context ${CONTEXT_NAME} apply --force-conflicts --server-side -f -
+    kubectl kustomize ${REPO_ROOT}/monitoring/prometheus-operator |
+        kubectl --context ${CONTEXT_NAME} apply --force-conflicts --server-side -f -
 
-# We make sure that monitoring workloads are deployed in the infrastructure node.
-    kubectl kustomize ${REPO_ROOT}/monitoring/prometheus-instance | \
+    # We make sure that monitoring workloads are deployed in the infrastructure node.
+    kubectl kustomize ${REPO_ROOT}/monitoring/prometheus-instance |
         kubectl --context=${CONTEXT_NAME} apply --force-conflicts --server-side -f -
     kubectl --context=${CONTEXT_NAME} -n prometheus-operator \
-      patch deployment prometheus-operator \
-      --type='merge' \
-      --patch='{"spec":{"template":{"spec":{"tolerations":[{"key":"node-role.kubernetes.io/infra","operator":"Exists","effect":"NoSchedule"}],"nodeSelector":{"node-role.kubernetes.io/infra":""}}}}}'
+        patch deployment prometheus-operator \
+        --type='merge' \
+        --patch='{"spec":{"template":{"spec":{"tolerations":[{"key":"node-role.kubernetes.io/infra","operator":"Exists","effect":"NoSchedule"}],"nodeSelector":{"node-role.kubernetes.io/infra":""}}}}}'
 
     echo "-------------------------------------------------------------"
     echo " 📈 Provisioning Grafana resources for region: ${region}"
     echo "-------------------------------------------------------------"
 
-# Deploying Grafana operator
+    # Deploying Grafana operator
     kubectl --context ${CONTEXT_NAME} apply --force-conflicts --server-side \
-      -f "https://github.com/grafana/grafana-operator/releases/download/${GRAFANA_OPERATOR_VERSION}/kustomize-cluster_scoped.yaml"
+        -f "https://github.com/grafana/grafana-operator/releases/download/${GRAFANA_OPERATOR_VERSION}/kustomize-cluster_scoped.yaml"
     kubectl --context ${CONTEXT_NAME} -n grafana \
-      patch deployment grafana-operator-controller-manager \
-      --type='merge' \
-      --patch='{"spec":{"template":{"spec":{"tolerations":[{"key":"node-role.kubernetes.io/infra","operator":"Exists","effect":"NoSchedule"}],"nodeSelector":{"node-role.kubernetes.io/infra":""}}}}}'
+        patch deployment grafana-operator-controller-manager \
+        --type='merge' \
+        --patch='{"spec":{"template":{"spec":{"tolerations":[{"key":"node-role.kubernetes.io/infra","operator":"Exists","effect":"NoSchedule"}],"nodeSelector":{"node-role.kubernetes.io/infra":""}}}}}'
 
-# Creating Grafana instance and dashboards
-    kubectl kustomize ${REPO_ROOT}/monitoring/grafana/ | \
-      kubectl --context ${CONTEXT_NAME} apply -f -
+    # Creating Grafana instance and dashboards
+    kubectl kustomize ${REPO_ROOT}/monitoring/grafana/ |
+        kubectl --context ${CONTEXT_NAME} apply -f -
 
-# Restart the operator
-if kubectl get ns cnpg-system &> /dev/null
-then
-  kubectl rollout restart deployment -n cnpg-system cnpg-controller-manager
-  kubectl rollout status deployment -n cnpg-system cnpg-controller-manager
-fi
+    # Restart the operator
+    if kubectl get ns cnpg-system &>/dev/null; then
+        kubectl rollout restart deployment -n cnpg-system cnpg-controller-manager
+        kubectl rollout status deployment -n cnpg-system cnpg-controller-manager
+    fi
 
     echo "-----------------------------------------------------------------------------------------------------------------"
     echo " ⏩ To forward the Grafana service for region: ${region} to your localhost"
@@ -90,7 +89,7 @@ fi
     echo " You can then connect to the Grafana GUI using"
     echo " http://localhost:${port}"
     echo " The default password for the user admin is 'admin'. You will be prompted to change the password on the first login."
-    echo "-----------------------------------------------------------------------------------------------------------------"    
+    echo "-----------------------------------------------------------------------------------------------------------------"
     # increment target port by 1
     ((port++))
 done

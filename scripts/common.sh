@@ -42,7 +42,7 @@ RUSTFS_ROOT_PASSWORD="${RUSTFS_ROOT_PASSWORD:-Cl0udNativePGRocks}"
 # --- Common Prerequisite Checks ---
 REQUIRED_COMMANDS="kind kubectl grep sed"
 for cmd in $REQUIRED_COMMANDS; do
-    if ! command -v "$cmd" &> /dev/null; then
+    if ! command -v "$cmd" &>/dev/null; then
         echo "❌ Error: Missing required command: $cmd"
         exit 1
     fi
@@ -52,7 +52,7 @@ done
 # Find a supported container provider
 CONTAINER_PROVIDER=""
 for provider in docker podman; do
-    if command -v "$provider" &> /dev/null; then
+    if command -v "$provider" &>/dev/null; then
         CONTAINER_PROVIDER=$provider
         break
     fi
@@ -65,6 +65,7 @@ fi
 
 # Determine project root and kubeconfig path
 REPO_ROOT=$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)
+# shellcheck disable=SC2034 # used by demo/setup.sh and demo/teardown.sh
 KUBE_CONFIG_PATH="${REPO_ROOT}/k8s/kube-config.yaml"
 
 # Demo deployment versions
@@ -74,6 +75,7 @@ CERT_MANAGER_VERSION="${CERT_MANAGER_VERSION:-v1.21.1}"
 CNPG_VERSION="${CNPG_VERSION:-v1.30.0}"
 # Derived: bare version and release branch suffix (e.g. v1.29.0 -> 1.29.0, 1.29)
 CNPG_VERSION_BARE="${CNPG_VERSION#v}"
+# shellcheck disable=SC2034 # used by demo/funcs_requirements.sh and demo/teardown.sh
 CNPG_RELEASE_BRANCH="${CNPG_VERSION_BARE%.*}"
 # renovate: datasource=github-releases depName=cloudnative-pg/plugin-barman-cloud
 BARMAN_CLOUD_PLUGIN_VERSION="${BARMAN_CLOUD_PLUGIN_VERSION:-v0.14.0}"
@@ -106,4 +108,5 @@ EXTERNAL_RESIZER_VERSION="${EXTERNAL_RESIZER_VERSION:-v2.2.1}"
 # renovate: datasource=github-releases depName=kubernetes-csi/external-health-monitor
 EXTERNAL_HEALTH_MONITOR_VERSION="${EXTERNAL_HEALTH_MONITOR_VERSION:-v0.18.0}"
 
+# shellcheck source=scripts/funcs_regions.sh
 source "${REPO_ROOT}/scripts/funcs_regions.sh"

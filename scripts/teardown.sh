@@ -25,6 +25,7 @@
 #
 
 # Source the common setup script
+# shellcheck source=scripts/common.sh
 source "$(dirname "$0")/common.sh"
 
 # --- Main Logic ---
@@ -58,15 +59,15 @@ for region in "${REGIONS[@]}"; do
     # Stop and remove RustFS container
     if [[ $($CONTAINER_PROVIDER ps -a --format '{{.Names}}') == *"${RUSTFS_CONTAINER_NAME}"* ]]; then
         echo "🗑️  Removing RustFS container '${RUSTFS_CONTAINER_NAME}'..."
-        $CONTAINER_PROVIDER rm -f "${RUSTFS_CONTAINER_NAME}" > /dev/null
+        $CONTAINER_PROVIDER rm -f "${RUSTFS_CONTAINER_NAME}" >/dev/null
     else
         echo "🔷 RustFS container '${RUSTFS_CONTAINER_NAME}' not found, skipping."
     fi
 
     # Remove RustFS data volume
-    if $CONTAINER_PROVIDER volume inspect "${RUSTFS_CONTAINER_NAME}" > /dev/null 2>&1; then
+    if $CONTAINER_PROVIDER volume inspect "${RUSTFS_CONTAINER_NAME}" >/dev/null 2>&1; then
         echo "🗑️  Removing RustFS data volume '${RUSTFS_CONTAINER_NAME}'..."
-        $CONTAINER_PROVIDER volume rm "${RUSTFS_CONTAINER_NAME}" > /dev/null
+        $CONTAINER_PROVIDER volume rm "${RUSTFS_CONTAINER_NAME}" >/dev/null
     else
         echo "🔷 RustFS data volume '${RUSTFS_CONTAINER_NAME}' not found, skipping."
     fi
@@ -74,8 +75,8 @@ for region in "${REGIONS[@]}"; do
     # Clean up kubeconfig entry for the deleted cluster
     if [ -f "${KUBE_CONFIG_PATH}" ]; then
         echo "🧹 Cleaning up kubeconfig entries for context '${CONTEXT_NAME}'..."
-        kubectl config delete-context "${CONTEXT_NAME}" --kubeconfig "${KUBE_CONFIG_PATH}" > /dev/null 2>&1 || true
-        kubectl config delete-cluster "${K8S_CLUSTER_NAME}" --kubeconfig "${KUBE_CONFIG_PATH}" > /dev/null 2>&1 || true
+        kubectl config delete-context "${CONTEXT_NAME}" --kubeconfig "${KUBE_CONFIG_PATH}" >/dev/null 2>&1 || true
+        kubectl config delete-cluster "${K8S_CLUSTER_NAME}" --kubeconfig "${KUBE_CONFIG_PATH}" >/dev/null 2>&1 || true
     fi
 done
 

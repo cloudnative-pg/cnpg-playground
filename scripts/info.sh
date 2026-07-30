@@ -24,6 +24,7 @@
 #
 
 # Source the common setup script
+# shellcheck source=scripts/common.sh
 source "$(dirname "$0")/common.sh"
 
 # --- Script Setup ---

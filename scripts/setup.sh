@@ -34,8 +34,10 @@
 #
 
 # Source the common setup script
+# shellcheck source=scripts/common.sh
 source "$(dirname "$0")/common.sh"
 # Provides deploy_csi_host_path()
+# shellcheck source=scripts/csi-hostpath.sh
 source "$(dirname "$0")/csi-hostpath.sh"
 
 # Optionally deploy the CSI hostpath driver + volume snapshot support (single
@@ -74,13 +76,12 @@ set_regions "$@"
 
 # Setup a single, shared Kubeconfig for all clusters
 export KUBECONFIG="${KUBE_CONFIG_PATH}"
-> "${KUBE_CONFIG_PATH}" # Create or clear the kubeconfig file
-cd "${REPO_ROOT}"
+: >"${KUBE_CONFIG_PATH}" # Create or clear the kubeconfig file
+cd "${REPO_ROOT}" || exit 1
 kind_config_path="${REPO_ROOT}/k8s/kind-cluster.yaml"
 
 # --- Phase 1: Provision Clusters and RustFS Instances ---
-let "current_objectstore_port = RUSTFS_BASE_PORT"
-declare -A objectstore_ports
+current_objectstore_port=${RUSTFS_BASE_PORT}
 declare -a all_objectstore_names=()
 
 for region in "${REGIONS[@]}"; do
@@ -93,7 +94,7 @@ for region in "${REGIONS[@]}"; do
     RUSTFS_CONTAINER_NAME="${RUSTFS_BASE_NAME}-${region}"
 
     echo "📦 Creating RustFS container '${RUSTFS_CONTAINER_NAME}' on host port ${current_objectstore_port}..."
-    $CONTAINER_PROVIDER volume create "${RUSTFS_CONTAINER_NAME}" > /dev/null
+    $CONTAINER_PROVIDER volume create "${RUSTFS_CONTAINER_NAME}" >/dev/null
     $CONTAINER_PROVIDER run \
         --name "${RUSTFS_CONTAINER_NAME}" -d -p "${current_objectstore_port}:9001" \
         -v "${RUSTFS_CONTAINER_NAME}:/data" \
@@ -138,7 +139,6 @@ for region in "${REGIONS[@]}"; do
     echo "✅ Resource provisioning for '${region}' complete in $(format_duration $((SECONDS - region_start)))."
 
     # Store details for the next phase
-    objectstore_ports["${region}"]="${current_objectstore_port}"
     all_objectstore_names+=("${RUSTFS_CONTAINER_NAME}")
     ((current_objectstore_port++))
 done
@@ -191,6 +191,7 @@ echo "⏱️  Total setup time: $(format_duration $((SECONDS - total_start)))."
 echo
 # Point the shared kubeconfig at the first region so users land on it,
 # not on whichever cluster was created last.
-kubectl config use-context "$(get_cluster_context "${REGIONS[0]}")" > /dev/null
+kubectl config use-context "$(get_cluster_context "${REGIONS[0]}")" >/dev/null
 # Display information using the info script
+# shellcheck source=scripts/info.sh
 source "$(dirname "$0")/info.sh"
