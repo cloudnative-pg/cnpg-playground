@@ -44,6 +44,9 @@ source "$(cd "$(dirname "$0")/.." && pwd)/scripts/common.sh"
 # Source the CNPG operator/cert-manager/Barman Cloud Plugin deployment function
 source "${REPO_ROOT}/demo/funcs_requirements.sh"
 
+# Source the YAML-rendering helper functions (format_duration, get_source_region)
+source "${REPO_ROOT}/demo/funcs_render.sh"
+
 kube_config_path="${KUBE_CONFIG_PATH}"
 templates_dir="${TEMPLATES_DIR:-${REPO_ROOT}/demo/templates}"
 legacy_templates_dir="${templates_dir}/legacy"
@@ -116,28 +119,6 @@ detect_running_regions "$@"
 primary_region="${REGIONS[0]}"
 num_regions=${#REGIONS[@]}
 
-format_duration() {
-    local s=$1
-    printf "%dm %02ds" $((s / 60)) $((s % 60))
-}
-
-# Return the replica source for a given region in the circular chain.
-# For a ring [r0, r1, ..., rN-1]:
-#   source(r0) = rN-1  (the primary wraps around to the last region)
-#   source(ri) = r(i-1)
-get_source_region() {
-    local target="$1"
-    local prev="${REGIONS[$((num_regions - 1))]}"
-    local r
-    for r in "${REGIONS[@]}"; do
-        if [ "${r}" = "${target}" ]; then
-            echo "${prev}"
-            return
-        fi
-        prev="${r}"
-    done
-}
-
 # Consume generated YAML from stdin, then:
 #   - append to ${output_dir}/${region}.yaml  if OUTPUT_DIR is set
 #   - print to stdout                         if DRY_RUN is true
@@ -183,7 +164,7 @@ generate_podmonitor_yaml() {
 generate_cluster_yaml_plugin() {
     local region="$1"
     local source_region
-    source_region=$(get_source_region "${region}")
+    source_region=$(get_source_region "${region}" "${REGIONS[@]}")
 
     # Cluster header: apiVersion through affinity
     REGION="${region}" \
@@ -230,7 +211,7 @@ generate_cluster_yaml_plugin() {
 generate_cluster_yaml_legacy() {
     local region="$1"
     local source_region
-    source_region=$(get_source_region "${region}")
+    source_region=$(get_source_region "${region}" "${REGIONS[@]}")
 
     REGION="${region}" \
     envsubst '${REGION}' < "${tmpl_cluster}"
