@@ -115,6 +115,11 @@ for region in "${REGIONS[@]}"; do
     kubectl label node -l infra.node.kubernetes.io node-role.kubernetes.io/infra=
     kubectl label node -l app.node.kubernetes.io node-role.kubernetes.io/app=
 
+    echo "🌍 Labeling nodes in '${K8S_CLUSTER_NAME}' with topology for region '${region}'..."
+    kubectl label nodes --all --overwrite \
+        "topology.kubernetes.io/region=${region}" \
+        "topology.kubernetes.io/zone=${region}-1"
+
     if [ "${DEPLOY_CSI_HOSTPATH}" == "true" ]; then
         deploy_csi_host_path
     else
