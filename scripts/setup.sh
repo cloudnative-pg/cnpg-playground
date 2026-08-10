@@ -115,6 +115,22 @@ for region in "${REGIONS[@]}"; do
     kubectl label node -l infra.node.kubernetes.io node-role.kubernetes.io/infra=
     kubectl label node -l app.node.kubernetes.io node-role.kubernetes.io/app=
 
+    echo "🌍 Labeling nodes in '${K8S_CLUSTER_NAME}' with topology for region '${region}'..."
+    kubectl label nodes --all --overwrite "topology.kubernetes.io/region=${region}"
+
+    # All non-PostgreSQL nodes (control-plane, infra, app) share a single zone.
+    kubectl label nodes --all --overwrite "topology.kubernetes.io/zone=${region}-1"
+
+    # Each of the 3 PostgreSQL worker nodes gets its own zone, so the demo's
+    # 3-instance Clusters (one instance per node, via required pod
+    # anti-affinity on kubernetes.io/hostname) land in three distinct zones —
+    # mirroring a real multi-AZ region.
+    zone_index=1
+    while IFS= read -r pg_node; do
+        kubectl label "${pg_node}" --overwrite "topology.kubernetes.io/zone=${region}-${zone_index}"
+        ((zone_index++))
+    done < <(kubectl get nodes -l postgres.node.kubernetes.io -o name | sort)
+
     if [ "${DEPLOY_CSI_HOSTPATH}" == "true" ]; then
         deploy_csi_host_path
     else

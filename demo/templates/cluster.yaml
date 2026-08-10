@@ -14,7 +14,7 @@ spec:
       operator: Exists
       effect: NoSchedule
     enablePodAntiAffinity: true
-    topologyKey: kubernetes.io/hostname
+    topologyKey: topology.kubernetes.io/zone
     podAntiAffinityType: required
 
   postgresql:
