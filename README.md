@@ -238,7 +238,9 @@ To help you get started, we've included a demo scenario that showcases the
 This walkthrough guides you through deploying a **PostgreSQL cluster
 distributed across two regions** within the playground. The symmetric
 architecture also includes **continuous backup** using the
-[Barman Cloud Plugin](https://cloudnative-pg.io/plugin-barman-cloud/).
+[Barman Cloud Plugin](https://cloudnative-pg.io/plugin-barman-cloud/), with
+optional multi-tier backup and recovery through the
+[Klio Operator](https://github.com/cloudnative-pg/klio).
 
 For complete instructions and supporting resources, refer to the
 [demo folder](./demo/README.md).

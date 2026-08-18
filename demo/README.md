@@ -67,6 +67,11 @@ To follow this demonstration, ensure the following are installed on your system:
   For detailed guidance, refer to the official
   [`cert-manager` installation documentation](https://cert-manager.io/docs/installation/).
 
+3. **`helm`**: Only required when deploying with `KLIO=true`, since the
+  [Klio Operator](https://github.com/cloudnative-pg/klio) is distributed as a
+  Helm chart. Follow the
+  [official Helm installation guide](https://helm.sh/docs/intro/install/).
+
 ## Deployment
 
 Once the CNPG Playground is installed, deploy the PostgreSQL clusters across
@@ -103,7 +108,9 @@ wal2json, pg-crash), followed by the deployment of the PostgreSQL clusters.
 |----------|---------|-------------|
 | `LEGACY=true` | `false` | Use the legacy in-tree Barman Cloud code instead of the Barman Cloud Plugin |
 | `TRUNK=true` | `false` | Deploy from the `main` branch of both CloudNativePG and the Barman Cloud Plugin |
-| `REQUIREMENTS_ONLY=true` | `false` | Deploy only CloudNativePG, cert-manager, the Barman Cloud Plugin, and the `ClusterImageCatalog`; skip ObjectStores/Clusters. A later plain run automatically detects and skips already-installed requirements |
+| `KLIO=true` | `false` | Also protect the cluster with the [Klio Operator](https://cloudnative-pg.io/klio/), alongside the Barman Cloud Plugin. Has no effect together with `LEGACY=true` |
+| `BARMAN_CLOUD_PLUGIN=false` | `true` | Disable the Barman Cloud Plugin. Only valid together with `KLIO=true` (so Klio protects the cluster on its own) and only supports a single region. Has no effect together with `LEGACY=true`: the Barman Cloud Plugin operator is deployed regardless of `LEGACY` (for parity with the non-Klio setup), even though a legacy-mode Cluster doesn't reference it |
+| `REQUIREMENTS_ONLY=true` | `false` | Deploy only CloudNativePG, cert-manager, the Barman Cloud Plugin (unless `BARMAN_CLOUD_PLUGIN=false`), the Klio Operator (with `KLIO=true`), and the `ClusterImageCatalog`; skip ObjectStores/Clusters. A later plain run automatically detects and skips already-installed requirements |
 | `IMAGE_CATALOG_URL=<url>` | [`catalog-minimal-trixie.yaml`](https://github.com/cloudnative-pg/artifacts/blob/main/image-catalogs-extensions/catalog-minimal-trixie.yaml) | `ClusterImageCatalog` manifest applied in every region |
 | `IMAGE_CATALOG_NAME=<name>` | `postgresql-minimal-trixie` | Must match `metadata.name` in `IMAGE_CATALOG_URL`; referenced by the Cluster's `imageCatalogRef` (plugin mode) |
 | `POSTGRESQL_VERSION=<major>` | `18` | PostgreSQL major version selected from the catalog, in plugin mode |
@@ -141,6 +148,11 @@ fragments without modifying the repository.
 | `SCHEDULEDBACKUP_PLUGIN_TEMPLATE=<file>` | Override `scheduledbackup-plugin.yaml` |
 | `OBJECTSTORE_TEMPLATE=<file>` | Override `objectstore.yaml` |
 | `PODMONITOR_TEMPLATE=<file>` | Override `podmonitor.yaml` |
+| `KLIO_SERVER_TEMPLATE=<file>` | Override `klio/server.yaml` (used with `KLIO=true`) |
+| `KLIO_PLUGINCONFIG_TEMPLATE=<file>` | Override `klio/pluginconfiguration.yaml` (used with `KLIO=true`) |
+| `KLIO_CLUSTER_PARAMS_TEMPLATE=<file>` | Override `klio/cluster-klio-params.yaml` (used with `KLIO=true`) |
+| `KLIO_PG_HBA_TEMPLATE=<file>` | Override `klio/postgresql-pg-hba.yaml` (used with `KLIO=true`) |
+| `SCHEDULEDBACKUP_KLIO_TEMPLATE=<file>` | Override `klio/scheduledbackup-klio.yaml` (used with `BARMAN_CLOUD_PLUGIN=false KLIO=true`) |
 
 Legacy-mode equivalents (used with `LEGACY=true`):
 
@@ -185,6 +197,65 @@ DRY_RUN=true OUTPUT_DIR=/tmp/demo-yaml ./demo/setup.sh
 
 For a detailed understanding of the deployment process, refer to the
 [`setup.sh` script](setup.sh).
+
+## Klio
+
+Passing `KLIO=true` also deploys the [Klio Operator](https://cloudnative-pg.io/klio/)
+and attaches a `klio-${REGION}` Server to each region's cluster, alongside
+the Barman Cloud Plugin by default:
+
+```bash
+KLIO=true ./demo/setup.sh
+```
+
+Add `BARMAN_CLOUD_PLUGIN=false` to have Klio protect the cluster on its own
+(single region only):
+
+```bash
+BARMAN_CLOUD_PLUGIN=false KLIO=true ./demo/setup.sh local
+```
+
+`LEGACY=true` can't be combined with `KLIO=true`. In short:
+
+| `LEGACY` | `KLIO` | `BARMAN_CLOUD_PLUGIN` | Result |
+|----------|--------|----------|--------|
+| `false` | `false` | `true` (default) | Barman Cloud Plugin only |
+| `false` | `true` | `true` (default) | Barman Cloud Plugin **+** Klio |
+| `false` | `true` | `false` | Klio only (single region) |
+| `true` | *(ignored)* | *(ignored)* | Legacy in-tree Barman only |
+
+Once deployed, take a backup with (adjust `--context` for your region):
+
+```bash
+kubectl cnpg backup pg-eu \
+  --context kind-k8s-eu \
+  --backup-target primary \
+  --method plugin \
+  --plugin-name klio.cnpg.io
+```
+
+### Restoring a backup
+
+`demo/templates/klio/cluster-restore-klio.yaml` is a standalone example that
+bootstraps a new `pg-${REGION}-restore` cluster from an existing backup.
+Render and apply it manually once a backup exists:
+
+```bash
+REGION=local IMAGE_CATALOG_NAME=postgresql-minimal-trixie POSTGRESQL_VERSION=18 \
+  envsubst '${REGION} ${IMAGE_CATALOG_NAME} ${POSTGRESQL_VERSION}' \
+  < demo/templates/klio/cluster-restore-klio.yaml | kubectl --context kind-k8s-local apply -f -
+
+kubectl --context kind-k8s-local wait --timeout 10m --for=condition=Ready cluster/pg-local-restore
+```
+
+Clean it up with:
+
+```bash
+kubectl --context kind-k8s-local delete cluster/pg-local-restore \
+  pluginconfiguration/klio-pg-local-restore \
+  certificate/pg-local-restore-klio-user \
+  secret/pg-local-restore-klio-user
+```
 
 ## Teardown
 

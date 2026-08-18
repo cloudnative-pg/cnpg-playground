@@ -1,0 +1,4 @@
+  - name: klio.cnpg.io
+    enabled: true
+    parameters:
+      pluginConfigurationRef: klio-pg-${REGION}

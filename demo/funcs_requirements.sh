@@ -20,8 +20,9 @@
 
 #
 # Deployment of the CloudNativePG demo requirements: the CNPG operator,
-# cert-manager, the Barman Cloud Plugin, and a ClusterImageCatalog (common
-# extensions). Sourced by demo/setup.sh.
+# cert-manager, a ClusterImageCatalog (common extensions), and, optionally,
+# the Barman Cloud Plugin and/or the Klio Operator. Sourced by
+# demo/setup.sh.
 #
 
 # Check whether a CRD exists in the given cluster context
@@ -31,10 +32,10 @@ check_crd_existence() {
     kubectl --context "${context}" get crd "${crd}" &>/dev/null
 }
 
-# Deploy CloudNativePG, cert-manager, the Barman Cloud Plugin, and a
-# ClusterImageCatalog into a single region, unless they are already
-# installed there.
-# Globals used: trunk, CERT_MANAGER_VERSION, CNPG_RELEASE_BRANCH,
+# Deploy CloudNativePG, cert-manager, a ClusterImageCatalog, and (unless
+# BARMAN_CLOUD_PLUGIN=false) the Barman Cloud Plugin into a single region, unless they
+# are already installed there.
+# Globals used: trunk, barman_cloud_plugin, CERT_MANAGER_VERSION, CNPG_RELEASE_BRANCH,
 # CNPG_VERSION_BARE, BARMAN_CLOUD_PLUGIN_VERSION, IMAGE_CATALOG_URL (set by
 # scripts/common.sh and demo/setup.sh).
 deploy_cnpg_requirements() {
@@ -43,7 +44,7 @@ deploy_cnpg_requirements() {
 
     if check_crd_existence "${context}" clusters.postgresql.cnpg.io; then
         echo "ℹ️  CloudNativePG requirements already installed in region '${region}' (context: ${context});" \
-            "skipping operator/cert-manager/Barman Cloud Plugin/ClusterImageCatalog installation."
+            "skipping operator/cert-manager/backup plugin(s)/ClusterImageCatalog installation."
         return
     fi
 
@@ -91,19 +92,65 @@ deploy_cnpg_requirements() {
     echo "📦 cert-manager: $(kubectl --context "${context}" get deployment cert-manager \
         -n cert-manager -o jsonpath='{.spec.template.spec.containers[0].image}')"
 
-    if [ "${trunk}" -eq 1 ]; then
-        # Deploy Barman Cloud Plugin (trunk)
-        kubectl apply --context "${context}" -f \
-            https://raw.githubusercontent.com/cloudnative-pg/plugin-barman-cloud/refs/heads/main/manifest.yaml
+    # shellcheck disable=SC2154 # barman_cloud_plugin is set by demo/setup.sh
+    if ${barman_cloud_plugin}; then
+        if [ "${trunk}" -eq 1 ]; then
+            # Deploy Barman Cloud Plugin (trunk)
+            kubectl apply --context "${context}" -f \
+                https://raw.githubusercontent.com/cloudnative-pg/plugin-barman-cloud/refs/heads/main/manifest.yaml
+        else
+            # Deploy Barman Cloud Plugin (latest stable)
+            kubectl apply --context "${context}" -f \
+                "https://github.com/cloudnative-pg/plugin-barman-cloud/releases/download/${BARMAN_CLOUD_PLUGIN_VERSION}/manifest.yaml"
+        fi
+
+        # Wait for Barman Cloud Plugin deployment to complete
+        kubectl rollout --context "${context}" status deployment \
+            -n cnpg-system barman-cloud
+        echo "📦 Barman Cloud Plugin: $(kubectl --context "${context}" get deployment barman-cloud \
+            -n cnpg-system -o jsonpath='{.spec.template.spec.containers[0].image}')"
     else
-        # Deploy Barman Cloud Plugin (latest stable)
-        kubectl apply --context "${context}" -f \
-            "https://github.com/cloudnative-pg/plugin-barman-cloud/releases/download/${BARMAN_CLOUD_PLUGIN_VERSION}/manifest.yaml"
+        echo "⏭️  Skipping Barman Cloud Plugin installation (BARMAN_CLOUD_PLUGIN=false)."
+    fi
+}
+
+# Deploy the Klio Operator (multi-tier backup and recovery plugin for
+# CloudNativePG) via its Helm chart, into the same namespace as the
+# CloudNativePG operator, unless it is already installed in this region.
+# Requires cert-manager, which deploy_cnpg_requirements installs beforehand.
+# Globals used: CONTAINER_PROVIDER, KLIO_VERSION, KLIO_CHART (set by
+# scripts/common.sh).
+deploy_klio_requirements() {
+    local region="$1"
+    local context="$2"
+
+    # RustFS (unlike the Barman Cloud Plugin's S3 client) does not create a
+    # bucket on first write, and Klio's tier2 client requires one to already
+    # exist. A dedicated bucket keeps Klio's data separate from the Barman
+    # Cloud Plugin's "backups" bucket; demo/teardown.sh removes it again.
+    "${CONTAINER_PROVIDER}" exec "objectstore-${region}" mkdir -p /data/klio
+
+    if check_crd_existence "${context}" servers.klio.cnpg.io; then
+        echo "ℹ️  Klio Operator already installed in region '${region}' (context: ${context});" \
+            "skipping installation."
+        return
     fi
 
-    # Wait for Barman Cloud Plugin deployment to complete
-    kubectl rollout --context "${context}" status deployment \
-        -n cnpg-system barman-cloud
-    echo "📦 Barman Cloud Plugin: $(kubectl --context "${context}" get deployment barman-cloud \
+    # No CRDs are installed by cnpg-playground's Prometheus setup by default
+    # (see monitoring/setup.sh), so disable the chart's ServiceMonitor unless
+    # the Prometheus Operator CRDs are already present.
+    local prometheus_enable=false
+    if check_crd_existence "${context}" servicemonitors.monitoring.coreos.com; then
+        prometheus_enable=true
+    fi
+
+    helm install klio-operator "${KLIO_CHART}" \
+        --version "${KLIO_VERSION#v}" \
+        --kube-context "${context}" \
+        --namespace cnpg-system \
+        --set "prometheus.enable=${prometheus_enable}" \
+        --wait --timeout 5m
+
+    echo "📦 Klio Operator: $(kubectl --context "${context}" get deployment klio-operator-controller-manager \
         -n cnpg-system -o jsonpath='{.spec.template.spec.containers[0].image}')"
 }
