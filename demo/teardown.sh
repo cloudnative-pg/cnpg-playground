@@ -45,10 +45,14 @@ for region in "${REGIONS[@]}"; do
 
     CONTEXT_NAME=$(get_cluster_context "${region}")
 
-    # Delete the Postgres cluster and its scheduled backup
+    # Delete the Postgres cluster and its scheduled backup(s). The unqualified
+    # pg-${region}-backup name is legacy mode's; plugin mode names its own
+    # pg-${region}-barman-backup (Klio's pg-${region}-klio-backup, if
+    # present, is deleted in the Klio-specific block below)
     kubectl delete --context "${CONTEXT_NAME}" --ignore-not-found=true \
         cluster/pg-${region} \
-        scheduledbackup/pg-${region}-backup
+        scheduledbackup/pg-${region}-backup \
+        scheduledbackup/pg-${region}-barman-backup
 
     # Delete the PodMonitor if Prometheus CRDs are present
     if kubectl --context "${CONTEXT_NAME}" get crd podmonitors.monitoring.coreos.com &>/dev/null; then
@@ -60,6 +64,7 @@ for region in "${REGIONS[@]}"; do
     # resources, plus the Klio Operator itself, if Klio was deployed here
     if kubectl --context "${CONTEXT_NAME}" get crd servers.klio.cnpg.io &>/dev/null; then
         kubectl delete --context "${CONTEXT_NAME}" --ignore-not-found=true \
+            scheduledbackup/pg-${region}-klio-backup \
             pluginconfiguration/klio-pg-${region} \
             server/klio-${region} \
             certificate/klio-${region}-tls \

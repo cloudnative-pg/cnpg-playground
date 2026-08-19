@@ -1,0 +1,36 @@
+---
+# Standalone restore example: bootstraps a NEW cluster (pg-${REGION}-restore)
+# from the backups already taken for pg-${REGION} via the Barman Cloud
+# Plugin, reusing that region's existing ObjectStore (objectstore-${REGION})
+# and its secret, so no separate credentials or certificates are needed. Not part
+# of the automated demo/setup.sh flow; render and apply it manually once a
+# backup exists. See the "Restoring a backup" section of demo/README.md for
+# the exact command.
+# See https://cloudnative-pg.io/plugin-barman-cloud/docs/usage/#restoring-a-cluster-from-an-object-store
+apiVersion: postgresql.cnpg.io/v1
+kind: Cluster
+metadata:
+  name: pg-${REGION}-restore
+spec:
+  instances: 1
+
+  imageCatalogRef:
+    apiGroup: postgresql.cnpg.io
+    kind: ClusterImageCatalog
+    name: ${IMAGE_CATALOG_NAME}
+    major: ${POSTGRESQL_VERSION}
+
+  storage:
+    size: 1Gi
+
+  bootstrap:
+    recovery:
+      source: pg-${REGION}
+
+  externalClusters:
+    - name: pg-${REGION}
+      plugin:
+        name: barman-cloud.cloudnative-pg.io
+        parameters:
+          barmanObjectName: objectstore-${REGION}
+          serverName: pg-${REGION}

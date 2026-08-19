@@ -1,14 +1,18 @@
 ---
 # Tier 2 (durable) scheduled backup. Tier 1 continuous data protection starts
 # automatically once the plugin is configured on the Cluster; no separate
-# schedule is needed for it. Only used when BARMAN=false, since the Barman
-# Cloud Plugin's ScheduledBackup (scheduledbackup-plugin.yaml) already
-# exercises continuous protection when it's also enabled.
+# schedule is needed for it.
+#
+# Rendered whenever KLIO=true. When BARMAN_CLOUD_PLUGIN=false, this is the
+# active backup engine (suspend: false). When both are enabled, it is
+# rendered suspended: a migration-readiness artifact, since Barman's own
+# ScheduledBackup already exercises continuous protection in that case.
+# Un-suspend it (and retire Barman's) to complete a migration to Klio.
 # See https://cloudnative-pg.io/klio/user/backup_and_restore/
 apiVersion: postgresql.cnpg.io/v1
 kind: ScheduledBackup
 metadata:
-  name: pg-${REGION}-backup
+  name: pg-${REGION}-klio-backup
 spec:
   method: plugin
   target: primary
@@ -18,4 +22,5 @@ spec:
     name: pg-${REGION}
   pluginConfiguration:
     name: klio.cnpg.io
-  immediate: true
+  suspend: ${KLIO_SCHEDULEDBACKUP_SUSPEND}
+  immediate: ${KLIO_SCHEDULEDBACKUP_IMMEDIATE}

@@ -142,17 +142,17 @@ fragments without modifying the repository.
 | `BOOTSTRAP_INITDB_TEMPLATE=<file>` | Override `bootstrap-initdb.yaml` |
 | `BOOTSTRAP_RECOVERY_TEMPLATE=<file>` | Override `bootstrap-recovery.yaml` |
 | `IMAGE_CATALOG_TEMPLATE=<file>` | Override `image-catalog.yaml` (plugin mode's `imageCatalogRef`) |
-| `CLUSTER_PLUGIN_PARAMS_TEMPLATE=<file>` | Override `cluster-plugin-params.yaml` |
+| `CLUSTER_PLUGIN_PARAMS_TEMPLATE=<file>` | Override `barman-cloud/cluster-params.yaml` |
 | `REPLICA_SECTION_TEMPLATE=<file>` | Override `replica-section.yaml` |
-| `EXTERNAL_CLUSTER_PLUGIN_TEMPLATE=<file>` | Override `external-cluster-plugin.yaml` |
-| `SCHEDULEDBACKUP_PLUGIN_TEMPLATE=<file>` | Override `scheduledbackup-plugin.yaml` |
-| `OBJECTSTORE_TEMPLATE=<file>` | Override `objectstore.yaml` |
+| `EXTERNAL_CLUSTER_PLUGIN_TEMPLATE=<file>` | Override `barman-cloud/external-cluster.yaml` |
+| `SCHEDULEDBACKUP_PLUGIN_TEMPLATE=<file>` | Override `barman-cloud/scheduledbackup.yaml` |
+| `OBJECTSTORE_TEMPLATE=<file>` | Override `barman-cloud/objectstore.yaml` |
 | `PODMONITOR_TEMPLATE=<file>` | Override `podmonitor.yaml` |
 | `KLIO_SERVER_TEMPLATE=<file>` | Override `klio/server.yaml` (used with `KLIO=true`) |
 | `KLIO_PLUGINCONFIG_TEMPLATE=<file>` | Override `klio/pluginconfiguration.yaml` (used with `KLIO=true`) |
 | `KLIO_CLUSTER_PARAMS_TEMPLATE=<file>` | Override `klio/cluster-klio-params.yaml` (used with `KLIO=true`) |
 | `KLIO_PG_HBA_TEMPLATE=<file>` | Override `klio/postgresql-pg-hba.yaml` (used with `KLIO=true`) |
-| `SCHEDULEDBACKUP_KLIO_TEMPLATE=<file>` | Override `klio/scheduledbackup-klio.yaml` (used with `BARMAN_CLOUD_PLUGIN=false KLIO=true`) |
+| `SCHEDULEDBACKUP_KLIO_TEMPLATE=<file>` | Override `klio/scheduledbackup-klio.yaml` (used with `KLIO=true`; rendered active when `BARMAN_CLOUD_PLUGIN=false`, suspended as a migration-readiness artifact otherwise) |
 
 Legacy-mode equivalents (used with `LEGACY=true`):
 
@@ -236,19 +236,31 @@ kubectl cnpg backup pg-eu \
 
 ### Restoring a backup
 
-`demo/templates/klio/cluster-restore-klio.yaml` is a standalone example that
-bootstraps a new `pg-${REGION}-restore` cluster from an existing backup.
-Render and apply it manually once a backup exists:
+Two standalone examples, neither wired into the automated `demo/setup.sh`
+flow, show how to use each plugin's own recovery method to bootstrap a
+new `pg-${REGION}-restore` cluster from an existing backup. Both use the
+same cluster name, so only ever have one applied per region at a time.
+
+| Example | Template |
+|---|---|
+| Recovery via the Barman Cloud Plugin | `demo/templates/barman-cloud/cluster-restore.yaml` |
+| Recovery via Klio | `demo/templates/klio/cluster-restore.yaml` |
 
 ```bash
+# Recovery via the Barman Cloud Plugin
 REGION=local IMAGE_CATALOG_NAME=postgresql-minimal-trixie POSTGRESQL_VERSION=18 \
   envsubst '${REGION} ${IMAGE_CATALOG_NAME} ${POSTGRESQL_VERSION}' \
-  < demo/templates/klio/cluster-restore-klio.yaml | kubectl --context kind-k8s-local apply -f -
+  < demo/templates/barman-cloud/cluster-restore.yaml | kubectl --context kind-k8s-local apply -f -
+
+# Recovery via Klio
+REGION=local IMAGE_CATALOG_NAME=postgresql-minimal-trixie POSTGRESQL_VERSION=18 \
+  envsubst '${REGION} ${IMAGE_CATALOG_NAME} ${POSTGRESQL_VERSION}' \
+  < demo/templates/klio/cluster-restore.yaml | kubectl --context kind-k8s-local apply -f -
 
 kubectl --context kind-k8s-local wait --timeout 10m --for=condition=Ready cluster/pg-local-restore
 ```
 
-Clean it up with:
+Clean it up with (adjust for whichever template you applied):
 
 ```bash
 kubectl --context kind-k8s-local delete cluster/pg-local-restore \

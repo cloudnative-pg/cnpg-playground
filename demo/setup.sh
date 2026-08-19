@@ -56,6 +56,7 @@ source "${REPO_ROOT}/demo/funcs_render.sh"
 
 kube_config_path="${KUBE_CONFIG_PATH}"
 templates_dir="${TEMPLATES_DIR:-${REPO_ROOT}/demo/templates}"
+barman_cloud_templates_dir="${templates_dir}/barman-cloud"
 legacy_templates_dir="${templates_dir}/legacy"
 
 # Default PostgreSQL major version for plugin mode (selects the entry in
@@ -70,11 +71,11 @@ tmpl_storage="${STORAGE_TEMPLATE:-${templates_dir}/storage.yaml}"
 tmpl_bootstrap_initdb="${BOOTSTRAP_INITDB_TEMPLATE:-${templates_dir}/bootstrap-initdb.yaml}"
 tmpl_bootstrap_recovery="${BOOTSTRAP_RECOVERY_TEMPLATE:-${templates_dir}/bootstrap-recovery.yaml}"
 tmpl_image_catalog="${IMAGE_CATALOG_TEMPLATE:-${templates_dir}/image-catalog.yaml}"
-tmpl_cluster_plugin_params="${CLUSTER_PLUGIN_PARAMS_TEMPLATE:-${templates_dir}/cluster-plugin-params.yaml}"
+tmpl_cluster_plugin_params="${CLUSTER_PLUGIN_PARAMS_TEMPLATE:-${barman_cloud_templates_dir}/cluster-params.yaml}"
 tmpl_replica_section="${REPLICA_SECTION_TEMPLATE:-${templates_dir}/replica-section.yaml}"
-tmpl_external_cluster_plugin="${EXTERNAL_CLUSTER_PLUGIN_TEMPLATE:-${templates_dir}/external-cluster-plugin.yaml}"
-tmpl_scheduledbackup_plugin="${SCHEDULEDBACKUP_PLUGIN_TEMPLATE:-${templates_dir}/scheduledbackup-plugin.yaml}"
-tmpl_objectstore="${OBJECTSTORE_TEMPLATE:-${templates_dir}/objectstore.yaml}"
+tmpl_external_cluster_plugin="${EXTERNAL_CLUSTER_PLUGIN_TEMPLATE:-${barman_cloud_templates_dir}/external-cluster.yaml}"
+tmpl_scheduledbackup_plugin="${SCHEDULEDBACKUP_PLUGIN_TEMPLATE:-${barman_cloud_templates_dir}/scheduledbackup.yaml}"
+tmpl_objectstore="${OBJECTSTORE_TEMPLATE:-${barman_cloud_templates_dir}/objectstore.yaml}"
 tmpl_podmonitor="${PODMONITOR_TEMPLATE:-${templates_dir}/podmonitor.yaml}"
 tmpl_klio_server="${KLIO_SERVER_TEMPLATE:-${templates_dir}/klio/server.yaml}"
 tmpl_klio_pluginconfig="${KLIO_PLUGINCONFIG_TEMPLATE:-${templates_dir}/klio/pluginconfiguration.yaml}"
@@ -217,7 +218,7 @@ generate_podmonitor_yaml() {
 
 # Emit the per-region Klio Server + PluginConfiguration stream (KLIO=true).
 # Reuses the region's RustFS instance and credentials for tier 2 storage
-# (see demo/templates/objectstore.yaml).
+# (see demo/templates/barman-cloud/objectstore.yaml).
 generate_klio_yaml() {
     local region="$1"
     REGION="${region}" KLIO_VERSION="${KLIO_VERSION}" \
@@ -293,14 +294,30 @@ generate_cluster_yaml_plugin() {
             REGION="${r}" envsubst '${REGION}' <"${tmpl_external_cluster_plugin}"
         done
 
-        # Barman Cloud Plugin ScheduledBackup document
+        # Barman Cloud Plugin ScheduledBackup document: always the active
+        # backup engine when enabled, whether Klio is attached or not.
         REGION="${region}" \
             envsubst '${REGION}' <"${tmpl_scheduledbackup_plugin}"
-    else
-        # Klio-alone: its own ScheduledBackup document (Barman's, above,
-        # already exercises continuous protection when it's also enabled)
+    fi
+
+    # Klio's own ScheduledBackup document. When Klio runs alone
+    # (BARMAN_CLOUD_PLUGIN=false) this is the active tier2 backup engine.
+    # When it runs alongside Barman (both enabled) it is rendered *suspended*
+    # instead: a migration-readiness artifact sitting next to Barman's active
+    # ScheduledBackup above, which already exercises continuous protection in
+    # that case. Completing a migration to Klio means un-suspending this
+    # document and retiring Barman's.
+    if ${klio}; then
+        local klio_scheduledbackup_suspend=false klio_scheduledbackup_immediate=true
+        if ${barman_cloud_plugin}; then
+            klio_scheduledbackup_suspend=true
+            klio_scheduledbackup_immediate=false
+        fi
         REGION="${region}" \
-            envsubst '${REGION}' <"${tmpl_scheduledbackup_klio}"
+            KLIO_SCHEDULEDBACKUP_SUSPEND="${klio_scheduledbackup_suspend}" \
+            KLIO_SCHEDULEDBACKUP_IMMEDIATE="${klio_scheduledbackup_immediate}" \
+            envsubst '${REGION} ${KLIO_SCHEDULEDBACKUP_SUSPEND} ${KLIO_SCHEDULEDBACKUP_IMMEDIATE}' \
+            <"${tmpl_scheduledbackup_klio}"
     fi
 }
 
