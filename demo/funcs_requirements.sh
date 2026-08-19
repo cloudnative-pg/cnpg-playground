@@ -144,11 +144,17 @@ deploy_klio_requirements() {
         prometheus_enable=true
     fi
 
+    # Pin the operator to the control-plane node, same as the CNPG operator
+    # above. Unlike the CNPG operator (applied via plain manifest, then
+    # patched), the Klio Operator chart exposes affinity/tolerations as
+    # native values, so they're set at install time instead.
     helm install klio-operator "${KLIO_CHART}" \
         --version "${KLIO_VERSION#v}" \
         --kube-context "${context}" \
         --namespace cnpg-system \
         --set "prometheus.enable=${prometheus_enable}" \
+        --set-json 'controllerManager.affinity={"nodeAffinity":{"requiredDuringSchedulingIgnoredDuringExecution":{"nodeSelectorTerms":[{"matchExpressions":[{"key":"node-role.kubernetes.io/control-plane","operator":"Exists"}]}]}}}' \
+        --set-json 'controllerManager.tolerations=[{"key":"node-role.kubernetes.io/control-plane","operator":"Exists"}]' \
         --wait --timeout 5m
 
     echo "📦 Klio Operator: $(kubectl --context "${context}" get deployment klio-operator-controller-manager \

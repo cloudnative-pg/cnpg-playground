@@ -93,6 +93,21 @@ metadata:
 spec:
   image: ghcr.io/cloudnative-pg/klio:${KLIO_VERSION}
 
+  # Land the server on an infra-role node, same as the Prometheus/Grafana
+  # Operators in monitoring/setup.sh. The Server CRD has no top-level
+  # nodeSelector/tolerations of its own; scheduling directives go under
+  # spec.template.spec, which is merged with the default server container
+  # (containers: [] is mandatory even when empty).
+  template:
+    spec:
+      containers: []
+      nodeSelector:
+        node-role.kubernetes.io/infra: ""
+      tolerations:
+        - key: node-role.kubernetes.io/infra
+          operator: Exists
+          effect: NoSchedule
+
   tier1:
     cache:
       pvcTemplate:
