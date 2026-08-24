@@ -1,0 +1,123 @@
+---
+# Without the Barman Cloud Plugin, Klio has to provide its own cross-region
+# recovery source for the distributed topology: this read-only Server +
+# PluginConfiguration pair, rendered once per *other* region (a full mesh,
+# mirroring demo/templates/barman-cloud/external-cluster.yaml's), lets this
+# region's Cluster recover from that other region's tier2 bucket directly
+# over S3. It reuses this region's own self-signed issuer and CA (created
+# alongside its standard klio-${REGION} Server in server.yaml) rather than
+# a fresh Issuer chain, and this region's own copy of the (demo-only,
+# well-known) encryption keypair -- identical everywhere, so it decrypts
+# the other region's data too.
+apiVersion: cert-manager.io/v1
+kind: Certificate
+metadata:
+  name: klio-${EXTERNAL_REGION}-readonly-tls
+spec:
+  secretName: klio-${EXTERNAL_REGION}-readonly-tls
+  commonName: klio-${EXTERNAL_REGION}-readonly
+  dnsNames:
+    - klio-${EXTERNAL_REGION}-readonly
+    - klio-${EXTERNAL_REGION}-readonly.default
+    - klio-${EXTERNAL_REGION}-readonly.default.svc
+
+  duration: 2160h # 90d
+  renewBefore: 360h # 15d
+
+  isCA: false
+  usages:
+    - server auth
+
+  issuerRef:
+    name: klio-selfsigned-issuer
+    kind: Issuer
+    group: cert-manager.io
+---
+# Client certificate used by this region's pg-${REGION} Cluster to
+# authenticate against the klio-${EXTERNAL_REGION}-readonly Server, signed
+# by this region's own CA (see server.yaml).
+apiVersion: cert-manager.io/v1
+kind: Certificate
+metadata:
+  name: klio-${EXTERNAL_REGION}-readonly-client
+spec:
+  commonName: klio@pg-${EXTERNAL_REGION}
+  secretName: klio-${EXTERNAL_REGION}-readonly-client
+
+  duration: 2160h # 90d
+  renewBefore: 360h # 15d
+
+  isCA: false
+  usages:
+    - client auth
+
+  issuerRef:
+    name: klio-${REGION}-ca
+    kind: Issuer
+    group: cert-manager.io
+---
+apiVersion: klio.cnpg.io/v1alpha1
+kind: Server
+metadata:
+  name: klio-${EXTERNAL_REGION}-readonly
+spec:
+  image: ghcr.io/cloudnative-pg/klio:${KLIO_VERSION}
+  mode: read-only
+
+  template:
+    spec:
+      containers: []
+      nodeSelector:
+        node-role.kubernetes.io/infra: ""
+      tolerations:
+        - key: node-role.kubernetes.io/infra
+          operator: Exists
+          effect: NoSchedule
+
+  tier2:
+    cache:
+      pvcTemplate:
+        resources:
+          requests:
+            storage: 1Gi
+        accessModes:
+          - ReadWriteOnce
+    encryptionKeyFile:
+      fileReference:
+        volume:
+          secret:
+            secretName: klio-${REGION}-encryption
+        path: encryption-key
+    identityFile:
+      fileReference:
+        volume:
+          secret:
+            secretName: klio-${REGION}-encryption
+        path: secret-key
+    s3:
+      prefix: klio
+      bucketName: klio
+      endpoint: http://objectstore-${EXTERNAL_REGION}:9000
+      region: us-east-1
+      accessKeyId:
+        name: objectstore-${EXTERNAL_REGION}
+        key: ACCESS_KEY_ID
+      secretAccessKey:
+        name: objectstore-${EXTERNAL_REGION}
+        key: ACCESS_SECRET_KEY
+
+  tlsSecretName: klio-${EXTERNAL_REGION}-readonly-tls
+  caSecretName: klio-${REGION}-ca
+---
+apiVersion: klio.cnpg.io/v1alpha1
+kind: PluginConfiguration
+metadata:
+  name: klio-pg-${EXTERNAL_REGION}-readonly
+spec:
+  mode: read-only
+  clusterName: pg-${EXTERNAL_REGION}
+  serverAddress: klio-${EXTERNAL_REGION}-readonly.default
+  clientSecretName: klio-${EXTERNAL_REGION}-readonly-client
+  serverSecretName: klio-${EXTERNAL_REGION}-readonly-tls
+  tier2:
+    enableRecovery: true

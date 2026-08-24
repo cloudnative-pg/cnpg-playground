@@ -118,8 +118,8 @@ deploy_cnpg_requirements() {
 # CloudNativePG) via its Helm chart, into the same namespace as the
 # CloudNativePG operator, unless it is already installed in this region.
 # Requires cert-manager, which deploy_cnpg_requirements installs beforehand.
-# Globals used: CONTAINER_PROVIDER, KLIO_VERSION, KLIO_CHART (set by
-# scripts/common.sh).
+# Globals used: RUSTFS_RC_IMAGE (scripts/common.sh), tmpl_klio_bucket_init_job
+# (demo/setup.sh), KLIO_VERSION, KLIO_CHART (scripts/common.sh).
 deploy_klio_requirements() {
     local region="$1"
     local context="$2"
@@ -128,7 +128,15 @@ deploy_klio_requirements() {
     # bucket on first write, and Klio's tier2 client requires one to already
     # exist. A dedicated bucket keeps Klio's data separate from the Barman
     # Cloud Plugin's "backups" bucket; demo/teardown.sh removes it again.
-    "${CONTAINER_PROVIDER}" exec "objectstore-${region}" mkdir -p /data/klio
+    kubectl delete --context "${context}" --ignore-not-found=true job/klio-bucket-init
+    REGION="${region}" RUSTFS_RC_IMAGE="${RUSTFS_RC_IMAGE}" \
+        envsubst '${REGION} ${RUSTFS_RC_IMAGE}' <"${tmpl_klio_bucket_init_job}" |
+        kubectl apply --context "${context}" -f -
+    if ! kubectl wait --context "${context}" --for=condition=complete --timeout=60s job/klio-bucket-init; then
+        kubectl logs --context "${context}" job/klio-bucket-init
+        exit 1
+    fi
+    kubectl delete --context "${context}" --ignore-not-found=true job/klio-bucket-init
 
     if check_crd_existence "${context}" servers.klio.cnpg.io; then
         echo "ℹ️  Klio Operator already installed in region '${region}' (context: ${context});" \

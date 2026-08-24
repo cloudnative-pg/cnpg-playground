@@ -33,6 +33,8 @@ set -u
 source "$(cd "$(dirname "$0")/.." && pwd)/scripts/common.sh"
 
 kube_config_path="${KUBE_CONFIG_PATH}"
+templates_dir="${TEMPLATES_DIR:-${REPO_ROOT}/demo/templates}"
+tmpl_klio_bucket_remove_job="${KLIO_BUCKET_REMOVE_JOB_TEMPLATE:-${templates_dir}/klio/bucket-remove-job.yaml}"
 
 # Setup a separate Kubeconfig
 cd "${REPO_ROOT}"
@@ -74,6 +76,19 @@ for region in "${REGIONS[@]}"; do
             issuer/klio-selfsigned-issuer \
             secret/klio-${region}-encryption
 
+        # Klio-alone's cross-region mesh (see demo/templates/klio/readonly-server.yaml):
+        # a read-only Server + PluginConfiguration + certs for every other
+        # region, all local to this cluster.
+        for r in "${REGIONS[@]}"; do
+            if [ "${r}" != "${region}" ]; then
+                kubectl delete --context "${CONTEXT_NAME}" --ignore-not-found=true \
+                    pluginconfiguration/klio-pg-${r}-readonly \
+                    server/klio-${r}-readonly \
+                    certificate/klio-${r}-readonly-tls \
+                    certificate/klio-${r}-readonly-client
+            fi
+        done
+
         if helm status klio-operator --kube-context "${CONTEXT_NAME}" --namespace cnpg-system &>/dev/null; then
             helm uninstall klio-operator \
                 --kube-context "${CONTEXT_NAME}" --namespace cnpg-system
@@ -98,9 +113,25 @@ for region in "${REGIONS[@]}"; do
         # up on the next teardown run).
         kubectl delete --context "${CONTEXT_NAME}" --ignore-not-found=true --timeout=60s \
             pvc -l klio.cnpg.io/klio-server=klio-${region}
+        for r in "${REGIONS[@]}"; do
+            if [ "${r}" != "${region}" ]; then
+                kubectl delete --context "${CONTEXT_NAME}" --ignore-not-found=true --timeout=60s \
+                    pvc -l klio.cnpg.io/klio-server=klio-${r}-readonly
+            fi
+        done
 
-        # Remove tier 2 backup data from the object store container
-        ${CONTAINER_PROVIDER} exec objectstore-${region} rm -rf /data/klio
+        # Remove the klio bucket (tier 2 backup data) through the S3 API, via
+        # RustFS's own `rc` client run as an in-cluster Job, mirroring how
+        # deploy_klio_requirements creates it in demo/funcs_requirements.sh
+        # (see demo/templates/klio/bucket-init-job.yaml for why this isn't a
+        # local docker/podman exec)
+        kubectl delete --context "${CONTEXT_NAME}" --ignore-not-found=true job/klio-bucket-remove
+        REGION="${region}" RUSTFS_RC_IMAGE="${RUSTFS_RC_IMAGE}" \
+            envsubst '${REGION} ${RUSTFS_RC_IMAGE}' <"${tmpl_klio_bucket_remove_job}" |
+            kubectl apply --context "${CONTEXT_NAME}" -f -
+        kubectl wait --context "${CONTEXT_NAME}" --for=condition=complete --timeout=60s job/klio-bucket-remove ||
+            kubectl logs --context "${CONTEXT_NAME}" job/klio-bucket-remove
+        kubectl delete --context "${CONTEXT_NAME}" --ignore-not-found=true job/klio-bucket-remove
     fi
 
     # Delete the Barman ObjectStore CR, if the Barman Cloud Plugin CRDs are present

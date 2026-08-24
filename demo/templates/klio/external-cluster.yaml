@@ -1,0 +1,6 @@
+# PLUGIN_CONFIG_REF: see the comment in generate_cluster_yaml_plugin (demo/setup.sh).
+  - name: pg-${REGION}
+    plugin:
+      name: klio.cnpg.io
+      parameters:
+        pluginConfigurationRef: ${PLUGIN_CONFIG_REF}

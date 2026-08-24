@@ -109,7 +109,7 @@ wal2json, pg-crash), followed by the deployment of the PostgreSQL clusters.
 | `LEGACY=true` | `false` | Use the legacy in-tree Barman Cloud code instead of the Barman Cloud Plugin |
 | `TRUNK=true` | `false` | Deploy from the `main` branch of both CloudNativePG and the Barman Cloud Plugin |
 | `KLIO=true` | `false` | Also protect the cluster with the [Klio Operator](https://cloudnative-pg.io/klio/), alongside the Barman Cloud Plugin. Has no effect together with `LEGACY=true` |
-| `BARMAN_CLOUD_PLUGIN=false` | `true` | Disable the Barman Cloud Plugin. Only valid together with `KLIO=true` (so Klio protects the cluster on its own) and only supports a single region. Has no effect together with `LEGACY=true`: the Barman Cloud Plugin operator is deployed regardless of `LEGACY` (for parity with the non-Klio setup), even though a legacy-mode Cluster doesn't reference it |
+| `BARMAN_CLOUD_PLUGIN=false` | `true` | Disable the Barman Cloud Plugin. Only valid together with `KLIO=true` (so Klio protects the cluster on its own); in a multi-region setup, Klio provides its own cross-region recovery source via a read-only `Server` per other region. Has no effect together with `LEGACY=true`: the Barman Cloud Plugin operator is deployed regardless of `LEGACY` (for parity with the non-Klio setup), even though a legacy-mode Cluster doesn't reference it |
 | `REQUIREMENTS_ONLY=true` | `false` | Deploy only CloudNativePG, cert-manager, the Barman Cloud Plugin (unless `BARMAN_CLOUD_PLUGIN=false`), the Klio Operator (with `KLIO=true`), and the `ClusterImageCatalog`; skip ObjectStores/Clusters. A later plain run automatically detects and skips already-installed requirements |
 | `IMAGE_CATALOG_URL=<url>` | [`catalog-minimal-trixie.yaml`](https://github.com/cloudnative-pg/artifacts/blob/main/image-catalogs-extensions/catalog-minimal-trixie.yaml) | `ClusterImageCatalog` manifest applied in every region |
 | `IMAGE_CATALOG_NAME=<name>` | `postgresql-minimal-trixie` | Must match `metadata.name` in `IMAGE_CATALOG_URL`; referenced by the Cluster's `imageCatalogRef` (plugin mode) |
@@ -153,6 +153,10 @@ fragments without modifying the repository.
 | `KLIO_CLUSTER_PARAMS_TEMPLATE=<file>` | Override `klio/cluster-klio-params.yaml` (used with `KLIO=true`) |
 | `KLIO_PG_HBA_TEMPLATE=<file>` | Override `klio/postgresql-pg-hba.yaml` (used with `KLIO=true`) |
 | `SCHEDULEDBACKUP_KLIO_TEMPLATE=<file>` | Override `klio/scheduledbackup-klio.yaml` (used with `KLIO=true`; rendered active when `BARMAN_CLOUD_PLUGIN=false`, suspended as a migration-readiness artifact otherwise) |
+| `KLIO_BUCKET_INIT_JOB_TEMPLATE=<file>` | Override `klio/bucket-init-job.yaml`, the Job that creates the `klio` bucket ahead of installation (used with `KLIO=true`) |
+| `KLIO_BUCKET_REMOVE_JOB_TEMPLATE=<file>` | Override `klio/bucket-remove-job.yaml`, `demo/teardown.sh`'s equivalent Job that removes the `klio` bucket |
+| `KLIO_READONLY_SERVER_TEMPLATE=<file>` | Override `klio/readonly-server.yaml`, the read-only Server + PluginConfiguration rendered per other region when `BARMAN_CLOUD_PLUGIN=false` and multiple regions are active |
+| `EXTERNAL_CLUSTER_KLIO_TEMPLATE=<file>` | Override `klio/external-cluster.yaml`, Klio's equivalent of `barman-cloud/external-cluster.yaml` (used under the same conditions as `KLIO_READONLY_SERVER_TEMPLATE`) |
 
 Legacy-mode equivalents (used with `LEGACY=true`):
 
@@ -208,12 +212,17 @@ the Barman Cloud Plugin by default:
 KLIO=true ./demo/setup.sh
 ```
 
-Add `BARMAN_CLOUD_PLUGIN=false` to have Klio protect the cluster on its own
-(single region only):
+Add `BARMAN_CLOUD_PLUGIN=false` to have Klio protect the cluster on its own,
+with no Barman Cloud Plugin at all:
 
 ```bash
-BARMAN_CLOUD_PLUGIN=false KLIO=true ./demo/setup.sh local
+BARMAN_CLOUD_PLUGIN=false KLIO=true ./demo/setup.sh
 ```
+
+In a multi-region setup, Klio provides its own cross-region recovery source
+in place of the Barman Cloud Plugin's `externalClusters`: a read-only
+`Server` + `PluginConfiguration` per other region (see
+`klio/readonly-server.yaml`), reading that region's bucket directly over S3.
 
 `LEGACY=true` can't be combined with `KLIO=true`. In short:
 
@@ -221,7 +230,7 @@ BARMAN_CLOUD_PLUGIN=false KLIO=true ./demo/setup.sh local
 |----------|--------|----------|--------|
 | `false` | `false` | `true` (default) | Barman Cloud Plugin only |
 | `false` | `true` | `true` (default) | Barman Cloud Plugin **+** Klio |
-| `false` | `true` | `false` | Klio only (single region) |
+| `false` | `true` | `false` | Klio only |
 | `true` | *(ignored)* | *(ignored)* | Legacy in-tree Barman only |
 
 Once deployed, take a backup with (adjust `--context` for your region):
