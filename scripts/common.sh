@@ -38,6 +38,13 @@ RUSTFS_BASE_NAME="${RUSTFS_BASE_NAME:-objectstore}"
 RUSTFS_BASE_PORT=${RUSTFS_BASE_PORT:-9001}
 RUSTFS_ROOT_USER="${RUSTFS_ROOT_USER:-cnpg}"
 RUSTFS_ROOT_PASSWORD="${RUSTFS_ROOT_PASSWORD:-Cl0udNativePGRocks}"
+# RustFS's own S3 CLI client, used to create/remove buckets through the S3
+# API. A bucket is not just a directory under RustFS's data root: creating
+# one by `mkdir`-ing that directory instead corrupts its data once RustFS
+# writes to it (https://github.com/orgs/rustfs/discussions/997).
+# renovate: datasource=docker depName=rustfs/rc
+RUSTFS_RC_VERSION="${RUSTFS_RC_VERSION:-v0.1.31}"
+RUSTFS_RC_IMAGE="${RUSTFS_RC_IMAGE:-rustfs/rc:${RUSTFS_RC_VERSION}}"
 
 # --- Common Prerequisite Checks ---
 REQUIRED_COMMANDS="kind kubectl grep sed"
@@ -79,6 +86,9 @@ CNPG_VERSION_BARE="${CNPG_VERSION#v}"
 CNPG_RELEASE_BRANCH="${CNPG_VERSION_BARE%.*}"
 # renovate: datasource=github-releases depName=cloudnative-pg/plugin-barman-cloud
 BARMAN_CLOUD_PLUGIN_VERSION="${BARMAN_CLOUD_PLUGIN_VERSION:-v0.14.0}"
+# renovate: datasource=github-releases depName=cloudnative-pg/klio
+KLIO_VERSION="${KLIO_VERSION:-v0.0.20}"
+KLIO_CHART="${KLIO_CHART:-oci://ghcr.io/cloudnative-pg/klio-operator-chart}"
 # renovate: datasource=github-releases depName=grafana/grafana-operator
 GRAFANA_OPERATOR_VERSION="${GRAFANA_OPERATOR_VERSION:-v5.24.0}"
 # ClusterImageCatalog with common extensions (pg-crash, pgaudit, pgvector,

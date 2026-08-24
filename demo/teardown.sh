@@ -33,6 +33,8 @@ set -u
 source "$(cd "$(dirname "$0")/.." && pwd)/scripts/common.sh"
 
 kube_config_path="${KUBE_CONFIG_PATH}"
+templates_dir="${TEMPLATES_DIR:-${REPO_ROOT}/demo/templates}"
+tmpl_klio_bucket_remove_job="${KLIO_BUCKET_REMOVE_JOB_TEMPLATE:-${templates_dir}/klio/bucket-remove-job.yaml}"
 
 # Setup a separate Kubeconfig
 cd "${REPO_ROOT}"
@@ -45,10 +47,14 @@ for region in "${REGIONS[@]}"; do
 
     CONTEXT_NAME=$(get_cluster_context "${region}")
 
-    # Delete the Postgres cluster and its scheduled backup
+    # Delete the Postgres cluster and its scheduled backup(s). The unqualified
+    # pg-${region}-backup name is legacy mode's; plugin mode names its own
+    # pg-${region}-barman-backup (Klio's pg-${region}-klio-backup, if
+    # present, is deleted in the Klio-specific block below)
     kubectl delete --context "${CONTEXT_NAME}" --ignore-not-found=true \
         cluster/pg-${region} \
-        scheduledbackup/pg-${region}-backup
+        scheduledbackup/pg-${region}-backup \
+        scheduledbackup/pg-${region}-barman-backup
 
     # Delete the PodMonitor if Prometheus CRDs are present
     if kubectl --context "${CONTEXT_NAME}" get crd podmonitors.monitoring.coreos.com &>/dev/null; then
@@ -56,9 +62,83 @@ for region in "${REGIONS[@]}"; do
             podmonitor/pg-${region}-podmonitor
     fi
 
-    # Delete the Barman ObjectStore CR
-    kubectl delete --context "${CONTEXT_NAME}" --ignore-not-found=true \
-        objectstore/objectstore-${region}
+    # Delete the Klio Server, PluginConfiguration, and related cert-manager
+    # resources, plus the Klio Operator itself, if Klio was deployed here
+    if kubectl --context "${CONTEXT_NAME}" get crd servers.klio.cnpg.io &>/dev/null; then
+        kubectl delete --context "${CONTEXT_NAME}" --ignore-not-found=true \
+            scheduledbackup/pg-${region}-klio-backup \
+            pluginconfiguration/klio-pg-${region} \
+            server/klio-${region} \
+            certificate/klio-${region}-tls \
+            certificate/klio-${region}-ca \
+            certificate/klio-${region}-client \
+            issuer/klio-${region}-ca \
+            issuer/klio-selfsigned-issuer \
+            secret/klio-${region}-encryption
+
+        # Klio-alone's cross-region mesh (see demo/templates/klio/readonly-server.yaml):
+        # a read-only Server + PluginConfiguration + certs for every other
+        # region, all local to this cluster.
+        for r in "${REGIONS[@]}"; do
+            if [ "${r}" != "${region}" ]; then
+                kubectl delete --context "${CONTEXT_NAME}" --ignore-not-found=true \
+                    pluginconfiguration/klio-pg-${r}-readonly \
+                    server/klio-${r}-readonly \
+                    certificate/klio-${r}-readonly-tls \
+                    certificate/klio-${r}-readonly-client
+            fi
+        done
+
+        if helm status klio-operator --kube-context "${CONTEXT_NAME}" --namespace cnpg-system &>/dev/null; then
+            helm uninstall klio-operator \
+                --kube-context "${CONTEXT_NAME}" --namespace cnpg-system
+        fi
+
+        # Helm does not remove CRDs on uninstall; delete them explicitly so a
+        # later setup.sh run doesn't mistake their presence for an already
+        # installed (but now absent) operator
+        kubectl delete --context "${CONTEXT_NAME}" --ignore-not-found=true \
+            crd/servers.klio.cnpg.io \
+            crd/pluginconfigurations.klio.cnpg.io
+
+        # The Klio Server's StatefulSet retains its PVCs by default. Deleting
+        # them ensures a later setup.sh run starts from an empty tier1
+        # repository instead of reattaching to one recorded against a
+        # previous pg-${region} cluster's system ID (which fails WAL
+        # streaming with an "invalid system ID" error).
+        # The server/klio-${region} delete above only waits for that object
+        # itself, not its owned StatefulSet/Pods, so the PVCs may still be
+        # mounted here; bound the wait instead of risking an indefinite hang
+        # on the pvc-protection finalizer (a leftover PVC just gets cleaned
+        # up on the next teardown run).
+        kubectl delete --context "${CONTEXT_NAME}" --ignore-not-found=true --timeout=60s \
+            pvc -l klio.cnpg.io/klio-server=klio-${region}
+        for r in "${REGIONS[@]}"; do
+            if [ "${r}" != "${region}" ]; then
+                kubectl delete --context "${CONTEXT_NAME}" --ignore-not-found=true --timeout=60s \
+                    pvc -l klio.cnpg.io/klio-server=klio-${r}-readonly
+            fi
+        done
+
+        # Remove the klio bucket (tier 2 backup data) through the S3 API, via
+        # RustFS's own `rc` client run as an in-cluster Job, mirroring how
+        # deploy_klio_requirements creates it in demo/funcs_requirements.sh
+        # (see demo/templates/klio/bucket-init-job.yaml for why this isn't a
+        # local docker/podman exec)
+        kubectl delete --context "${CONTEXT_NAME}" --ignore-not-found=true job/klio-bucket-remove
+        REGION="${region}" RUSTFS_RC_IMAGE="${RUSTFS_RC_IMAGE}" \
+            envsubst '${REGION} ${RUSTFS_RC_IMAGE}' <"${tmpl_klio_bucket_remove_job}" |
+            kubectl apply --context "${CONTEXT_NAME}" -f -
+        kubectl wait --context "${CONTEXT_NAME}" --for=condition=complete --timeout=60s job/klio-bucket-remove ||
+            kubectl logs --context "${CONTEXT_NAME}" job/klio-bucket-remove
+        kubectl delete --context "${CONTEXT_NAME}" --ignore-not-found=true job/klio-bucket-remove
+    fi
+
+    # Delete the Barman ObjectStore CR, if the Barman Cloud Plugin CRDs are present
+    if kubectl --context "${CONTEXT_NAME}" get crd objectstores.barmancloud.cnpg.io &>/dev/null; then
+        kubectl delete --context "${CONTEXT_NAME}" --ignore-not-found=true \
+            objectstore/objectstore-${region}
+    fi
 
     # Delete Barman Cloud Plugin
     kubectl delete --context "${CONTEXT_NAME}" --ignore-not-found=true -f \

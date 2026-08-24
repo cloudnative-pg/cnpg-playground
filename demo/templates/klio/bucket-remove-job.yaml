@@ -1,0 +1,36 @@
+---
+# Removes the "klio" bucket (tier 2 backup data) from the region's RustFS
+# instance during teardown, the same way bucket-init-job.yaml creates it.
+#
+# Deleted right after it completes by demo/teardown.sh;
+# ttlSecondsAfterFinished is only a safety net.
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: klio-bucket-remove
+spec:
+  backoffLimit: 3
+  ttlSecondsAfterFinished: 60
+  template:
+    spec:
+      restartPolicy: Never
+      containers:
+        - name: rc
+          image: ${RUSTFS_RC_IMAGE}
+          command: ["sh", "-c"]
+          args:
+            - |
+              set -e
+              rc alias set klio "http://objectstore-${REGION}:9000" "${ACCESS_KEY_ID}" "${ACCESS_SECRET_KEY}" >/dev/null
+              rc bucket remove --force klio/klio
+          env:
+            - name: ACCESS_KEY_ID
+              valueFrom:
+                secretKeyRef:
+                  name: objectstore-${REGION}
+                  key: ACCESS_KEY_ID
+            - name: ACCESS_SECRET_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: objectstore-${REGION}
+                  key: ACCESS_SECRET_KEY

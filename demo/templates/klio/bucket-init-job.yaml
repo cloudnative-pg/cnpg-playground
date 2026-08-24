@@ -1,0 +1,36 @@
+---
+# Creates the "klio" bucket (tier 2 backup data) in the region's RustFS
+# instance ahead of the Klio Operator's installation.
+#
+# Deleted right after it completes by demo/funcs_requirements.sh;
+# ttlSecondsAfterFinished is only a safety net.
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: klio-bucket-init
+spec:
+  backoffLimit: 3
+  ttlSecondsAfterFinished: 60
+  template:
+    spec:
+      restartPolicy: Never
+      containers:
+        - name: rc
+          image: ${RUSTFS_RC_IMAGE}
+          command: ["sh", "-c"]
+          args:
+            - |
+              set -e
+              rc alias set klio "http://objectstore-${REGION}:9000" "${ACCESS_KEY_ID}" "${ACCESS_SECRET_KEY}" >/dev/null
+              rc bucket create --ignore-existing klio/klio
+          env:
+            - name: ACCESS_KEY_ID
+              valueFrom:
+                secretKeyRef:
+                  name: objectstore-${REGION}
+                  key: ACCESS_KEY_ID
+            - name: ACCESS_SECRET_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: objectstore-${REGION}
+                  key: ACCESS_SECRET_KEY

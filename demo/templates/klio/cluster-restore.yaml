@@ -1,0 +1,73 @@
+---
+# Standalone restore example: bootstraps a NEW cluster (pg-${REGION}-restore)
+# from the tier1/tier2 backups already taken for pg-${REGION}. Not part of
+# the automated demo/setup.sh flow (Klio only supports a single region, so
+# there is no cross-region replica bootstrap to wire this into); render and
+# apply it manually after a backup exists. See the "Klio" section of
+# demo/README.md for the exact command.
+# See https://cloudnative-pg.io/klio/user/backup_and_restore/
+apiVersion: cert-manager.io/v1
+kind: Certificate
+metadata:
+  name: pg-${REGION}-restore-klio-user
+spec:
+  # Must match the source cluster's own identity (pg-${REGION}), not the
+  # restore cluster's name: the Klio server authorizes requests against the
+  # clusterName in the PluginConfiguration below, which also names the
+  # source cluster being recovered.
+  commonName: klio@pg-${REGION}
+  secretName: pg-${REGION}-restore-klio-user
+
+  duration: 2160h # 90d
+  renewBefore: 360h # 15d
+
+  isCA: false
+  usages:
+    - client auth
+
+  issuerRef:
+    name: klio-${REGION}-ca
+    kind: Issuer
+    group: cert-manager.io
+---
+# A restore is a distinct client identity from the protected cluster's own
+# PluginConfiguration, so it gets its own PluginConfiguration and client
+# certificate; clusterName still points at the source cluster being restored.
+apiVersion: klio.cnpg.io/v1alpha1
+kind: PluginConfiguration
+metadata:
+  name: klio-pg-${REGION}-restore
+spec:
+  clusterName: pg-${REGION}
+  serverAddress: klio-${REGION}.default
+  clientSecretName: pg-${REGION}-restore-klio-user
+  serverSecretName: klio-${REGION}-tls
+  tier2:
+    enableRecovery: true
+---
+apiVersion: postgresql.cnpg.io/v1
+kind: Cluster
+metadata:
+  name: pg-${REGION}-restore
+spec:
+  instances: 1
+
+  imageCatalogRef:
+    apiGroup: postgresql.cnpg.io
+    kind: ClusterImageCatalog
+    name: ${IMAGE_CATALOG_NAME}
+    major: ${POSTGRESQL_VERSION}
+
+  storage:
+    size: 1Gi
+
+  bootstrap:
+    recovery:
+      source: pg-${REGION}
+
+  externalClusters:
+    - name: pg-${REGION}
+      plugin:
+        name: klio.cnpg.io
+        parameters:
+          pluginConfigurationRef: klio-pg-${REGION}-restore

@@ -1,0 +1,180 @@
+---
+# Self-signed root used for the Klio server's own TLS material. Klio uses
+# mutual TLS between the operator/server and the PostgreSQL clusters it
+# protects, so a CA is needed in addition to the server certificate.
+apiVersion: cert-manager.io/v1
+kind: Issuer
+metadata:
+  name: klio-selfsigned-issuer
+spec:
+  selfSigned: {}
+---
+apiVersion: cert-manager.io/v1
+kind: Certificate
+metadata:
+  name: klio-${REGION}-tls
+spec:
+  secretName: klio-${REGION}-tls
+  commonName: klio-${REGION}
+  dnsNames:
+    - klio-${REGION}
+    - klio-${REGION}.default
+    - klio-${REGION}.default.svc
+
+  duration: 2160h # 90d
+  renewBefore: 360h # 15d
+
+  isCA: false
+  usages:
+    - server auth
+
+  issuerRef:
+    name: klio-selfsigned-issuer
+    kind: Issuer
+    group: cert-manager.io
+---
+apiVersion: cert-manager.io/v1
+kind: Certificate
+metadata:
+  name: klio-${REGION}-ca
+spec:
+  commonName: klio-${REGION}
+  secretName: klio-${REGION}-ca
+
+  duration: 2160h # 90d
+  renewBefore: 360h # 15d
+
+  isCA: true
+  usages:
+    - cert sign
+
+  issuerRef:
+    name: klio-selfsigned-issuer
+    kind: Issuer
+    group: cert-manager.io
+---
+# CA issuer used to sign the client certificate that each protected Cluster
+# authenticates with (see klio/pluginconfiguration.yaml).
+apiVersion: cert-manager.io/v1
+kind: Issuer
+metadata:
+  name: klio-${REGION}-ca
+spec:
+  ca:
+    secretName: klio-${REGION}-ca
+---
+# Demo-only age keypair used by Klio to encrypt tier1/tier2 data at rest.
+# Not a secret worth protecting: it is a well-known key published in Klio's
+# own upstream samples, meant for learning/testing purposes only.
+apiVersion: v1
+kind: Secret
+metadata:
+  name: klio-${REGION}-encryption
+stringData:
+  secret-key: AGE-SECRET-KEY-1P7TWJ8H837DPVLSRVHAP0ZCZVHXJRTUS7S0A5VZAR49URW0Z9Q0SFW4HVM
+  public-key: age16y2zu5qptkzateyuarcahs0am75qjpu0xd2ty2dvm5jusnfzxg0scjh5uu
+  encryption-key: |
+    -----BEGIN AGE ENCRYPTED FILE-----
+    YWdlLWVuY3J5cHRpb24ub3JnL3YxCi0+IFgyNTUxOSAyMzJERW1QTUhjNGdlNmdi
+    WmFLZ3FLL1lZclduUWEvZkJncGdJZmtVd1FzCmZwSHVTcWNMRFN6a2xpY0NHNVRv
+    MlltSlNRY1B4bmNoOUxuZzZ5RENSSmsKLS0tIGNYUUNzSGVqNUZhS3VodnZ1cXNP
+    T3JHS3JRSUNkR1RyeEROYnZYNnNSV00KUd3HyxvvqCyW6hC1sWNDn/xeptHsoz/e
+    hxCgWoSJvfSfNk174njMwEeW+ic=
+    -----END AGE ENCRYPTED FILE-----
+---
+# The Klio Server: one per region, providing tier1 (local, fast) and tier2
+# (S3-compatible, durable) storage. Tier 2 reuses the region's RustFS
+# instance and credentials, provisioned by scripts/setup.sh regardless of
+# which backup plugin is in use (see the "objectstore-${REGION}" secret).
+apiVersion: klio.cnpg.io/v1alpha1
+kind: Server
+metadata:
+  name: klio-${REGION}
+spec:
+  image: ghcr.io/cloudnative-pg/klio:${KLIO_VERSION}
+
+  # Land the server on an infra-role node, same as the Prometheus/Grafana
+  # Operators in monitoring/setup.sh. The Server CRD has no top-level
+  # nodeSelector/tolerations of its own; scheduling directives go under
+  # spec.template.spec, which is merged with the default server container
+  # (containers: [] is mandatory even when empty).
+  template:
+    spec:
+      containers: []
+      nodeSelector:
+        node-role.kubernetes.io/infra: ""
+      tolerations:
+        - key: node-role.kubernetes.io/infra
+          operator: Exists
+          effect: NoSchedule
+
+  tier1:
+    cache:
+      pvcTemplate:
+        resources:
+          requests:
+            storage: 1Gi
+        accessModes:
+          - ReadWriteOnce
+    data:
+      pvcTemplate:
+        resources:
+          requests:
+            storage: 1Gi
+        accessModes:
+          - ReadWriteOnce
+    encryptionKeyFile:
+      fileReference:
+        volume:
+          secret:
+            secretName: klio-${REGION}-encryption
+        path: encryption-key
+    identityFile:
+      fileReference:
+        volume:
+          secret:
+            secretName: klio-${REGION}-encryption
+        path: secret-key
+
+  tier2:
+    cache:
+      pvcTemplate:
+        resources:
+          requests:
+            storage: 1Gi
+        accessModes:
+          - ReadWriteOnce
+    encryptionKeyFile:
+      fileReference:
+        volume:
+          secret:
+            secretName: klio-${REGION}-encryption
+        path: encryption-key
+    identityFile:
+      fileReference:
+        volume:
+          secret:
+            secretName: klio-${REGION}-encryption
+        path: secret-key
+    s3:
+      prefix: klio
+      bucketName: klio
+      endpoint: http://objectstore-${REGION}:9000
+      region: us-east-1
+      accessKeyId:
+        name: objectstore-${REGION}
+        key: ACCESS_KEY_ID
+      secretAccessKey:
+        name: objectstore-${REGION}
+        key: ACCESS_SECRET_KEY
+
+  queue:
+    pvcTemplate:
+      resources:
+        requests:
+          storage: 100Mi
+      accessModes:
+        - ReadWriteOnce
+
+  tlsSecretName: klio-${REGION}-tls
+  caSecretName: klio-${REGION}-ca
