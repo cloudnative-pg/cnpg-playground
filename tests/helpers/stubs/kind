@@ -1,0 +1,5 @@
+#!/usr/bin/env bash
+# No-op stand-in for `kind`, used only to satisfy prerequisite checks in
+# common.sh/demo/setup.sh during DRY_RUN template-rendering tests, which never
+# actually invoke kind.
+exit 0

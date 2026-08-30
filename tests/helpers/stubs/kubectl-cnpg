@@ -1,0 +1,5 @@
+#!/usr/bin/env bash
+# No-op stand-in for `kubectl-cnpg`, used only to satisfy the prerequisite
+# check in demo/setup.sh during DRY_RUN template-rendering tests, which never
+# actually invoke kubectl-cnpg.
+exit 0

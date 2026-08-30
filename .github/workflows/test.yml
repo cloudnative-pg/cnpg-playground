@@ -1,0 +1,62 @@
+name: test
+
+on:
+  pull_request:
+    branches: [main]
+  push:
+    branches: [main]
+
+# Pinned tool versions for the static-analysis/test tooling used by
+# scripts/test.sh. These are unrelated to the playground's own runtime
+# dependencies (see scripts/common.sh) and are tracked separately by
+# Renovate via the datasource comments below.
+env:
+  # renovate: datasource=github-releases depName=koalaman/shellcheck
+  SHELLCHECK_VERSION: v0.11.0
+  # renovate: datasource=github-releases depName=mvdan/sh
+  SHFMT_VERSION: v3.13.1
+  # renovate: datasource=github-releases depName=bats-core/bats-core
+  BATS_CORE_VERSION: v1.14.0
+  # renovate: datasource=github-releases depName=mikefarah/yq
+  YQ_VERSION: v4.53.3
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v5
+
+      - name: Install shellcheck
+        run: |
+          curl -sSfL "https://github.com/koalaman/shellcheck/releases/download/${SHELLCHECK_VERSION}/shellcheck-${SHELLCHECK_VERSION}.linux.x86_64.tar.xz" \
+            | tar -xJ
+          sudo mv "shellcheck-${SHELLCHECK_VERSION}/shellcheck" /usr/local/bin/shellcheck
+          shellcheck --version
+
+      - name: Install shfmt
+        run: |
+          curl -sSfL -o /usr/local/bin/shfmt \
+            "https://github.com/mvdan/sh/releases/download/${SHFMT_VERSION}/shfmt_${SHFMT_VERSION}_linux_amd64"
+          sudo chmod +x /usr/local/bin/shfmt
+          shfmt --version
+
+      - name: Install bats-core
+        run: |
+          curl -sSfL "https://github.com/bats-core/bats-core/archive/refs/tags/${BATS_CORE_VERSION}.tar.gz" \
+            | tar -xz
+          sudo "bats-core-${BATS_CORE_VERSION#v}/install.sh" /usr/local
+          bats --version
+
+      - name: Install yq
+        run: |
+          sudo curl -sSfL -o /usr/local/bin/yq \
+            "https://github.com/mikefarah/yq/releases/download/${YQ_VERSION}/yq_linux_amd64"
+          sudo chmod +x /usr/local/bin/yq
+          yq --version
+
+      - name: Ensure stub binaries are executable
+        run: chmod +x tests/helpers/stubs/*
+
+      - name: Run test suite
+        run: ./scripts/test.sh
