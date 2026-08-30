@@ -16,6 +16,9 @@ nodes:
 
 # PostgreSQL nodes (3)
 - role: worker
+  extraMounts:
+  - hostPath: "./k8s/profiles"
+    containerPath: "/var/lib/kubelet/seccomp/profiles"
   labels:
     postgres.node.kubernetes.io:
   kubeadmConfigPatches:
@@ -26,6 +29,9 @@ nodes:
       - key: node-role.kubernetes.io/postgres
         effect: NoSchedule
 - role: worker
+  extraMounts:
+  - hostPath: "./k8s/profiles"
+    containerPath: "/var/lib/kubelet/seccomp/profiles"
   labels:
     postgres.node.kubernetes.io:
   kubeadmConfigPatches:
@@ -36,6 +42,9 @@ nodes:
       - key: node-role.kubernetes.io/postgres
         effect: NoSchedule
 - role: worker
+  extraMounts:
+  - hostPath: "./k8s/profiles"
+    containerPath: "/var/lib/kubelet/seccomp/profiles"
   labels:
     postgres.node.kubernetes.io:
   kubeadmConfigPatches:
