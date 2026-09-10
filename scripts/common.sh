@@ -43,7 +43,7 @@ RUSTFS_ROOT_PASSWORD="${RUSTFS_ROOT_PASSWORD:-Cl0udNativePGRocks}"
 # one by `mkdir`-ing that directory instead corrupts its data once RustFS
 # writes to it (https://github.com/orgs/rustfs/discussions/997).
 # renovate: datasource=docker depName=rustfs/rc
-RUSTFS_RC_VERSION="${RUSTFS_RC_VERSION:-v0.1.31}"
+RUSTFS_RC_VERSION="${RUSTFS_RC_VERSION:-v0.1.35}"
 RUSTFS_RC_IMAGE="${RUSTFS_RC_IMAGE:-rustfs/rc:${RUSTFS_RC_VERSION}}"
 
 # --- Common Prerequisite Checks ---
