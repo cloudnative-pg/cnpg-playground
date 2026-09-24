@@ -79,7 +79,7 @@ KUBE_CONFIG_PATH="${REPO_ROOT}/k8s/kube-config.yaml"
 # renovate: datasource=github-releases depName=cert-manager/cert-manager
 CERT_MANAGER_VERSION="${CERT_MANAGER_VERSION:-v1.21.1}"
 # renovate: datasource=github-releases depName=cloudnative-pg/cloudnative-pg
-CNPG_VERSION="${CNPG_VERSION:-v1.30.0}"
+CNPG_VERSION="${CNPG_VERSION:-v1.30.1}"
 # Derived: bare version and release branch suffix (e.g. v1.29.0 -> 1.29.0, 1.29)
 CNPG_VERSION_BARE="${CNPG_VERSION#v}"
 # shellcheck disable=SC2034 # used by demo/funcs_requirements.sh and demo/teardown.sh
