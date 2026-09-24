@@ -85,7 +85,7 @@ CNPG_VERSION_BARE="${CNPG_VERSION#v}"
 # shellcheck disable=SC2034 # used by demo/funcs_requirements.sh and demo/teardown.sh
 CNPG_RELEASE_BRANCH="${CNPG_VERSION_BARE%.*}"
 # renovate: datasource=github-releases depName=cloudnative-pg/plugin-barman-cloud
-BARMAN_CLOUD_PLUGIN_VERSION="${BARMAN_CLOUD_PLUGIN_VERSION:-v0.14.0}"
+BARMAN_CLOUD_PLUGIN_VERSION="${BARMAN_CLOUD_PLUGIN_VERSION:-v0.15.0}"
 # renovate: datasource=github-releases depName=cloudnative-pg/klio
 KLIO_VERSION="${KLIO_VERSION:-v0.0.20}"
 KLIO_CHART="${KLIO_CHART:-oci://ghcr.io/cloudnative-pg/klio-operator-chart}"
