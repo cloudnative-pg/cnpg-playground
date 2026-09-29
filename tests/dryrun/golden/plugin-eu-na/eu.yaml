@@ -1,0 +1,140 @@
+apiVersion: barmancloud.cnpg.io/v1
+kind: ObjectStore
+metadata:
+  name: objectstore-eu
+spec:
+  configuration:
+    destinationPath: s3://backups/
+    endpointURL: http://objectstore-eu:9000
+    s3Credentials:
+      accessKeyId:
+        name: objectstore-eu
+        key: ACCESS_KEY_ID
+      secretAccessKey:
+        name: objectstore-eu
+        key: ACCESS_SECRET_KEY
+    wal:
+      compression: gzip
+---
+apiVersion: barmancloud.cnpg.io/v1
+kind: ObjectStore
+metadata:
+  name: objectstore-na
+spec:
+  configuration:
+    destinationPath: s3://backups/
+    endpointURL: http://objectstore-na:9000
+    s3Credentials:
+      accessKeyId:
+        name: objectstore-na
+        key: ACCESS_KEY_ID
+      secretAccessKey:
+        name: objectstore-na
+        key: ACCESS_SECRET_KEY
+    wal:
+      compression: gzip
+---
+apiVersion: postgresql.cnpg.io/v1
+kind: Cluster
+metadata:
+  name: pg-eu
+spec:
+  instances: 3
+
+  # See https://cloudnative-pg.io/documentation/current/scheduling/#isolating-postgresql-workloads
+  affinity:
+    nodeSelector:
+      node-role.kubernetes.io/postgres: ""
+    tolerations:
+    - key: node-role.kubernetes.io/postgres
+      operator: Exists
+      effect: NoSchedule
+    enablePodAntiAffinity: true
+    topologyKey: kubernetes.io/hostname
+    podAntiAffinityType: required
+
+  postgresql:
+    # See https://cloudnative-pg.io/documentation/current/postgresql_conf/#the-postgresql-section
+    parameters:
+      max_connections: '100'
+      log_checkpoints: 'on'
+      log_lock_waits: 'on'
+      pg_stat_statements.max: '10000'
+      pg_stat_statements.track: 'all'
+      hot_standby_feedback: 'on'
+      # Container images work fine with sysv shared memory
+      shared_memory_type: 'sysv'
+      dynamic_shared_memory_type: 'sysv'
+
+  storage:
+    size: 1Gi
+
+  # See https://cloudnative-pg.io/documentation/current/storage/#volume-for-wal
+  walStorage:
+    size: 1Gi
+
+  # See https://cloudnative-pg.io/documentation/current/image_catalog/
+  imageCatalogRef:
+    apiGroup: postgresql.cnpg.io
+    kind: ClusterImageCatalog
+    name: postgresql-minimal-trixie
+    major: 18
+
+  # See https://cloudnative-pg.io/documentation/current/bootstrap/#bootstrap-an-empty-cluster-initdb
+  bootstrap:
+    initdb:
+      dataChecksums: true
+
+  plugins:
+  - name: barman-cloud.cloudnative-pg.io
+    isWALArchiver: true
+    parameters:
+      barmanObjectName: objectstore-eu
+      serverName: pg-eu
+
+  # See https://cloudnative-pg.io/documentation/current/replica_cluster/#distributed-topology
+  replica:
+    self: pg-eu
+    primary: pg-eu
+    source: pg-na
+
+  externalClusters:
+  - name: pg-eu
+    plugin:
+      name: barman-cloud.cloudnative-pg.io
+      parameters:
+        barmanObjectName: objectstore-eu
+        serverName: pg-eu
+  - name: pg-na
+    plugin:
+      name: barman-cloud.cloudnative-pg.io
+      parameters:
+        barmanObjectName: objectstore-na
+        serverName: pg-na
+---
+# See https://cloudnative-pg.io/documentation/current/backup/#scheduled-backups
+apiVersion: postgresql.cnpg.io/v1
+kind: ScheduledBackup
+metadata:
+  name: pg-eu-backup
+spec:
+  method: plugin
+  schedule: '0 0 0 * * *'
+  backupOwnerReference: self
+  cluster:
+    name: pg-eu
+  pluginConfiguration:
+    name: barman-cloud.cloudnative-pg.io
+  immediate: true
+---
+apiVersion: monitoring.coreos.com/v1
+kind: PodMonitor
+metadata:
+  name: pg-eu-podmonitor
+spec:
+  selector:
+    matchLabels:
+      cnpg.io/cluster: pg-eu
+  podMetricsEndpoints:
+  - port: metrics
+---
