@@ -32,7 +32,7 @@ K8S_BASE_NAME=${K8S_NAME-k8s-}
 
 # RustFS Configuration
 # renovate: datasource=docker depName=rustfs/rustfs
-RUSTFS_VERSION="${RUSTFS_VERSION:-1.0.0-beta.1}"
+RUSTFS_VERSION="${RUSTFS_VERSION:-1.0.1}"
 RUSTFS_IMAGE="${RUSTFS_IMAGE:-rustfs/rustfs:${RUSTFS_VERSION}}"
 RUSTFS_BASE_NAME="${RUSTFS_BASE_NAME:-objectstore}"
 RUSTFS_BASE_PORT=${RUSTFS_BASE_PORT:-9001}
