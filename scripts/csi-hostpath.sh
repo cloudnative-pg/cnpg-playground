@@ -39,6 +39,27 @@
 # For example, after `REQUIREMENTS_ONLY=true ./demo/setup.sh`.
 #
 
+# --- Resolve a symlinked directory on raw.githubusercontent.com ---
+# raw.githubusercontent.com does not follow directory symlinks (a path through
+# one is a 404), but it serves the symlink itself as a 200 whose body is the
+# target: a single token, relative to the symlink's parent. Upstream's
+# `kubernetes-latest` is such a symlink (to `kubernetes-1.36`, itself a symlink
+# to `kubernetes-1.35`). Follows up to 5 links and prints the real path; a real
+# directory 404s on the probe, so a failed probe means "path" is already real.
+# Usage: resolve_github_symlink_dir <base_url> <path>
+resolve_github_symlink_dir() {
+    local base_url=$1 path=$2 target
+    for _ in 1 2 3 4 5; do
+        target=$(curl --retry 0 -fsSL "${base_url}/${path}" 2>/dev/null) || break
+        [[ -n "${target}" && ! "${target}" =~ [[:space:]] ]] || break
+        if [[ "${path}" == */* ]]; then
+            target="${path%/*}/${target}"
+        fi
+        path=${target}
+    done
+    echo "${path}"
+}
+
 # --- Deploy the CSI hostpath driver + snapshot support ---
 # Expects the caller to have selected the target cluster context. The version
 # variables come from common.sh.
@@ -49,7 +70,9 @@ deploy_csi_host_path() {
     local attacher_base="https://raw.githubusercontent.com/kubernetes-csi/external-attacher/${EXTERNAL_ATTACHER_VERSION}"
     local resizer_base="https://raw.githubusercontent.com/kubernetes-csi/external-resizer/${EXTERNAL_RESIZER_VERSION}"
     local health_monitor_base="https://raw.githubusercontent.com/kubernetes-csi/external-health-monitor/${EXTERNAL_HEALTH_MONITOR_VERSION}"
-    local hostpath_dir="${csi_base}/deploy/kubernetes-1.34/hostpath"
+    local deploy_dir
+    deploy_dir=$(resolve_github_symlink_dir "${csi_base}/deploy" "${CSI_DRIVER_HOST_PATH_DEPLOY_DIR}")
+    local hostpath_dir="${csi_base}/deploy/${deploy_dir}/hostpath"
 
     echo "🗄️  Deploying CSI hostpath driver with volume snapshot support (single node)..."
 
