@@ -116,7 +116,7 @@ EXTERNAL_ATTACHER_VERSION="${EXTERNAL_ATTACHER_VERSION:-v4.12.0}"
 # renovate: datasource=github-releases depName=kubernetes-csi/external-resizer
 EXTERNAL_RESIZER_VERSION="${EXTERNAL_RESIZER_VERSION:-v2.2.1}"
 # renovate: datasource=github-releases depName=kubernetes-csi/external-health-monitor
-EXTERNAL_HEALTH_MONITOR_VERSION="${EXTERNAL_HEALTH_MONITOR_VERSION:-v0.18.0}"
+EXTERNAL_HEALTH_MONITOR_VERSION="${EXTERNAL_HEALTH_MONITOR_VERSION:-v0.19.0}"
 
 # shellcheck source=scripts/funcs_regions.sh
 source "${REPO_ROOT}/scripts/funcs_regions.sh"
