@@ -107,6 +107,14 @@ IMAGE_CATALOG_NAME="${IMAGE_CATALOG_NAME:-postgresql-minimal-trixie}"
 # default (they keep the cluster's default StorageClass).
 # renovate: datasource=github-releases depName=kubernetes-csi/csi-driver-host-path
 CSI_DRIVER_HOST_PATH_VERSION="${CSI_DRIVER_HOST_PATH_VERSION:-v1.19.0}"
+# Directory under deploy/ in csi-driver-host-path holding the hostpath manifests.
+# Upstream names these after a Kubernetes version and drops old ones between
+# releases (kubernetes-1.34 was removed in v1.19.0). The default,
+# kubernetes-latest, is a symlink that scripts/csi-hostpath.sh resolves at run
+# time (raw.githubusercontent.com does not follow directory symlinks), so it
+# tracks upstream across version bumps. Set a real directory (e.g.
+# kubernetes-1.35) to pin it.
+CSI_DRIVER_HOST_PATH_DEPLOY_DIR="${CSI_DRIVER_HOST_PATH_DEPLOY_DIR:-kubernetes-latest}"
 # renovate: datasource=github-releases depName=kubernetes-csi/external-snapshotter
 EXTERNAL_SNAPSHOTTER_VERSION="${EXTERNAL_SNAPSHOTTER_VERSION:-v8.7.0}"
 # renovate: datasource=github-releases depName=kubernetes-csi/external-provisioner
