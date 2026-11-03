@@ -1,0 +1,132 @@
+apiVersion: postgresql.cnpg.io/v1
+kind: Cluster
+metadata:
+  name: pg-na
+spec:
+  instances: 3
+
+  # See https://cloudnative-pg.io/documentation/current/scheduling/#isolating-postgresql-workloads
+  affinity:
+    nodeSelector:
+      node-role.kubernetes.io/postgres: ""
+    tolerations:
+    - key: node-role.kubernetes.io/postgres
+      operator: Exists
+      effect: NoSchedule
+    enablePodAntiAffinity: true
+    topologyKey: kubernetes.io/hostname
+    podAntiAffinityType: required
+
+  postgresql:
+    # See https://cloudnative-pg.io/documentation/current/postgresql_conf/#the-postgresql-section
+    parameters:
+      max_connections: '100'
+      log_checkpoints: 'on'
+      log_lock_waits: 'on'
+      pg_stat_statements.max: '10000'
+      pg_stat_statements.track: 'all'
+      hot_standby_feedback: 'on'
+      # Container images work fine with sysv shared memory
+      shared_memory_type: 'sysv'
+      dynamic_shared_memory_type: 'sysv'
+
+  storage:
+    size: 1Gi
+
+  # See https://cloudnative-pg.io/documentation/current/storage/#volume-for-wal
+  walStorage:
+    size: 1Gi
+
+  imageName: ghcr.io/cloudnative-pg/postgresql:18-system-trixie
+
+  # See https://cloudnative-pg.io/documentation/current/recovery/
+  bootstrap:
+    recovery:
+      source: pg-eu
+
+  postgresql:
+    # See https://cloudnative-pg.io/documentation/current/postgresql_conf/#the-postgresql-section
+    parameters:
+      max_connections: '100'
+      log_checkpoints: 'on'
+      log_lock_waits: 'on'
+      pg_stat_statements.max: '10000'
+      pg_stat_statements.track: 'all'
+      hot_standby_feedback: 'on'
+      # Container images work fine with sysv shared memory
+      shared_memory_type: 'sysv'
+      dynamic_shared_memory_type: 'sysv'
+
+  backup:
+    barmanObjectStore:
+      destinationPath: s3://backups/
+      endpointURL: http://objectstore-na:9000
+      s3Credentials:
+        accessKeyId:
+          name: objectstore-na
+          key: ACCESS_KEY_ID
+        secretAccessKey:
+          name: objectstore-na
+          key: ACCESS_SECRET_KEY
+      wal:
+        compression: gzip
+
+  # See https://cloudnative-pg.io/documentation/current/replica_cluster/#distributed-topology
+  replica:
+    self: pg-na
+    primary: pg-eu
+    source: pg-eu
+
+  externalClusters:
+  - name: pg-eu
+    barmanObjectStore:
+      serverName: pg-eu
+      destinationPath: s3://backups/
+      endpointURL: http://objectstore-eu:9000
+      s3Credentials:
+        accessKeyId:
+          name: objectstore-eu
+          key: ACCESS_KEY_ID
+        secretAccessKey:
+          name: objectstore-eu
+          key: ACCESS_SECRET_KEY
+      wal:
+        compression: gzip
+  - name: pg-na
+    barmanObjectStore:
+      serverName: pg-na
+      destinationPath: s3://backups/
+      endpointURL: http://objectstore-na:9000
+      s3Credentials:
+        accessKeyId:
+          name: objectstore-na
+          key: ACCESS_KEY_ID
+        secretAccessKey:
+          name: objectstore-na
+          key: ACCESS_SECRET_KEY
+      wal:
+        compression: gzip
+---
+# See https://cloudnative-pg.io/documentation/current/backup/#scheduled-backups
+apiVersion: postgresql.cnpg.io/v1
+kind: ScheduledBackup
+metadata:
+  name: pg-na-backup
+spec:
+  schedule: '0 0 0 * * *'
+  backupOwnerReference: self
+  cluster:
+    name: pg-na
+  immediate: true
+---
+apiVersion: monitoring.coreos.com/v1
+kind: PodMonitor
+metadata:
+  name: pg-na-podmonitor
+spec:
+  selector:
+    matchLabels:
+      cnpg.io/cluster: pg-na
+  podMetricsEndpoints:
+  - port: metrics
+---
