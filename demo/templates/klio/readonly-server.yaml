@@ -4,11 +4,10 @@
 # PluginConfiguration pair, rendered once per *other* region (a full mesh,
 # mirroring demo/templates/barman-cloud/external-cluster.yaml's), lets this
 # region's Cluster recover from that other region's tier2 bucket directly
-# over S3. It reuses this region's own self-signed issuer and CA (created
-# alongside its standard klio-${REGION} Server in server.yaml) rather than
-# a fresh Issuer chain, and this region's own copy of the (demo-only,
-# well-known) encryption keypair -- identical everywhere, so it decrypts
-# the other region's data too.
+# over S3. It reuses this region's CA (see server.yaml) for its server and
+# client certificates, and this region's copy of the demo-only encryption
+# keypair, which is the same in every region and so decrypts the other
+# region's data.
 apiVersion: cert-manager.io/v1
 kind: Certificate
 metadata:
@@ -29,7 +28,7 @@ spec:
     - server auth
 
   issuerRef:
-    name: klio-selfsigned-issuer
+    name: klio-${REGION}-ca
     kind: Issuer
     group: cert-manager.io
 ---
@@ -74,26 +73,23 @@ spec:
           operator: Exists
           effect: NoSchedule
 
+  # A read-only server has no tier1 data or queue, so this volume only
+  # holds the tier2 cache.
+  storage:
+    pvcTemplate:
+      resources:
+        requests:
+          storage: 1Gi
+      accessModes:
+        - ReadWriteOnce
+
   tier2:
-    cache:
-      pvcTemplate:
-        resources:
-          requests:
-            storage: 1Gi
-        accessModes:
-          - ReadWriteOnce
-    encryptionKeyFile:
-      fileReference:
-        volume:
-          secret:
-            secretName: klio-${REGION}-encryption
-        path: encryption-key
-    identityFile:
-      fileReference:
-        volume:
-          secret:
-            secretName: klio-${REGION}-encryption
-        path: secret-key
+    encryption:
+      volume:
+        secret:
+          secretName: klio-${REGION}-encryption
+      keyPath: encryption-key
+      identityPath: secret-key
     s3:
       prefix: klio
       bucketName: klio
@@ -106,8 +102,21 @@ spec:
         name: objectstore-${EXTERNAL_REGION}
         key: ACCESS_SECRET_KEY
 
-  tlsSecretName: klio-${EXTERNAL_REGION}-readonly-tls
-  caSecretName: klio-${REGION}-ca
+  tls:
+    serverIdentity:
+      volume:
+        secret:
+          secretName: klio-${EXTERNAL_REGION}-readonly-tls
+      certPath: tls.crt
+      keyPath: tls.key
+    clientCa:
+      volume:
+        secret:
+          secretName: klio-${REGION}-ca
+          items:
+            - key: ca.crt
+              path: ca.crt
+      path: ca.crt
 ---
 apiVersion: klio.cnpg.io/v1alpha1
 kind: PluginConfiguration
@@ -117,7 +126,20 @@ spec:
   mode: read-only
   clusterName: pg-${EXTERNAL_REGION}
   serverAddress: klio-${EXTERNAL_REGION}-readonly.default
-  clientSecretName: klio-${EXTERNAL_REGION}-readonly-client
-  serverSecretName: klio-${EXTERNAL_REGION}-readonly-tls
+  tls:
+    clientIdentity:
+      volume:
+        secret:
+          secretName: klio-${EXTERNAL_REGION}-readonly-client
+      certPath: tls.crt
+      keyPath: tls.key
+    serverCa:
+      volume:
+        secret:
+          secretName: klio-${REGION}-ca
+          items:
+            - key: ca.crt
+              path: ca.crt
+      path: ca.crt
   tier2:
     enableRecovery: true

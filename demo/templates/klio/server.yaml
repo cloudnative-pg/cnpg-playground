@@ -1,7 +1,7 @@
 ---
-# Self-signed root used for the Klio server's own TLS material. Klio uses
-# mutual TLS between the operator/server and the PostgreSQL clusters it
-# protects, so a CA is needed in addition to the server certificate.
+# Self-signed root for the region's Klio CA below. Klio uses mutual TLS:
+# klio-${REGION}-ca signs the server certificate and every client
+# certificate, and each side verifies the other against it.
 apiVersion: cert-manager.io/v1
 kind: Issuer
 metadata:
@@ -29,7 +29,7 @@ spec:
     - server auth
 
   issuerRef:
-    name: klio-selfsigned-issuer
+    name: klio-${REGION}-ca
     kind: Issuer
     group: cert-manager.io
 ---
@@ -53,8 +53,8 @@ spec:
     kind: Issuer
     group: cert-manager.io
 ---
-# CA issuer used to sign the client certificate that each protected Cluster
-# authenticates with (see klio/pluginconfiguration.yaml).
+# CA issuer that signs the server certificate above and each Cluster's
+# client certificate (see klio/pluginconfiguration.yaml).
 apiVersion: cert-manager.io/v1
 kind: Issuer
 metadata:
@@ -108,54 +108,30 @@ spec:
           operator: Exists
           effect: NoSchedule
 
+  # Mounted at /klio: tier1 data, the work queue and both tier caches.
+  storage:
+    pvcTemplate:
+      resources:
+        requests:
+          storage: 3Gi
+      accessModes:
+        - ReadWriteOnce
+
   tier1:
-    cache:
-      pvcTemplate:
-        resources:
-          requests:
-            storage: 1Gi
-        accessModes:
-          - ReadWriteOnce
-    data:
-      pvcTemplate:
-        resources:
-          requests:
-            storage: 1Gi
-        accessModes:
-          - ReadWriteOnce
-    encryptionKeyFile:
-      fileReference:
-        volume:
-          secret:
-            secretName: klio-${REGION}-encryption
-        path: encryption-key
-    identityFile:
-      fileReference:
-        volume:
-          secret:
-            secretName: klio-${REGION}-encryption
-        path: secret-key
+    encryption:
+      volume:
+        secret:
+          secretName: klio-${REGION}-encryption
+      keyPath: encryption-key
+      identityPath: secret-key
 
   tier2:
-    cache:
-      pvcTemplate:
-        resources:
-          requests:
-            storage: 1Gi
-        accessModes:
-          - ReadWriteOnce
-    encryptionKeyFile:
-      fileReference:
-        volume:
-          secret:
-            secretName: klio-${REGION}-encryption
-        path: encryption-key
-    identityFile:
-      fileReference:
-        volume:
-          secret:
-            secretName: klio-${REGION}-encryption
-        path: secret-key
+    encryption:
+      volume:
+        secret:
+          secretName: klio-${REGION}-encryption
+      keyPath: encryption-key
+      identityPath: secret-key
     s3:
       prefix: klio
       bucketName: klio
@@ -168,13 +144,19 @@ spec:
         name: objectstore-${REGION}
         key: ACCESS_SECRET_KEY
 
-  queue:
-    pvcTemplate:
-      resources:
-        requests:
-          storage: 100Mi
-      accessModes:
-        - ReadWriteOnce
-
-  tlsSecretName: klio-${REGION}-tls
-  caSecretName: klio-${REGION}-ca
+  # Mount only ca.crt from the CA Secret, keeping the CA key off the pod.
+  tls:
+    serverIdentity:
+      volume:
+        secret:
+          secretName: klio-${REGION}-tls
+      certPath: tls.crt
+      keyPath: tls.key
+    clientCa:
+      volume:
+        secret:
+          secretName: klio-${REGION}-ca
+          items:
+            - key: ca.crt
+              path: ca.crt
+      path: ca.crt

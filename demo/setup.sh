@@ -353,23 +353,6 @@ generate_cluster_yaml_plugin() {
         if ${barman_cloud_plugin}; then
             klio_scheduledbackup_suspend=true
             klio_scheduledbackup_immediate=false
-        elif [ "${region}" != "${primary_region}" ]; then
-            # An immediate backup on a freshly-recovered replica races Klio's
-            # own send-wal against Postgres's standby restartpoint semantics.
-            # send-wal has no prior archive to resume from here, so it falls
-            # back to "whatever's current now" as its starting point; but
-            # pg_backup_start() on a standby can only report the last
-            # already-replayed restartpoint, which only advances when the
-            # primary takes (and ships down) a new checkpoint -- gated by the
-            # primary's checkpoint cadence (5m by default), not by replay
-            # progress. On an otherwise-idle cluster send-wal's start point
-            # races ahead of that almost every time, and once it does, the
-            # segment the backup needs is permanently outside what tier1 will
-            # ever cover: `klio backup run --wait-for-wals=true` retries
-            # forever with no way to recover. Let the first backup land on
-            # the regular daily schedule instead, well after send-wal and the
-            # checkpoint cadence have had time to align.
-            klio_scheduledbackup_immediate=false
         fi
         REGION="${region}" \
             KLIO_SCHEDULEDBACKUP_SUSPEND="${klio_scheduledbackup_suspend}" \
