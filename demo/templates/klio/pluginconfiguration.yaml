@@ -47,9 +47,9 @@ spec:
   # Number of most recent backups kept per tier
   tier1:
     retention:
-      latest: 10
+      latest: 2
   tier2:
     enableBackup: true
     enableRecovery: true
     retention:
-      latest: 7
+      latest: 4

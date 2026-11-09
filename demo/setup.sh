@@ -341,24 +341,10 @@ generate_cluster_yaml_plugin() {
         done
     fi
 
-    # Klio's own ScheduledBackup document. When Klio runs alone
-    # (BARMAN_CLOUD_PLUGIN=false) this is the active tier2 backup engine.
-    # When it runs alongside Barman (both enabled) it is rendered *suspended*
-    # instead: a migration-readiness artifact sitting next to Barman's active
-    # ScheduledBackup above, which already exercises continuous protection in
-    # that case. Completing a migration to Klio means un-suspending this
-    # document and retiring Barman's.
+    # Klio's own ScheduledBackup document.
     if ${klio}; then
-        local klio_scheduledbackup_suspend=false klio_scheduledbackup_immediate=true
-        if ${barman_cloud_plugin}; then
-            klio_scheduledbackup_suspend=true
-            klio_scheduledbackup_immediate=false
-        fi
         REGION="${region}" \
-            KLIO_SCHEDULEDBACKUP_SUSPEND="${klio_scheduledbackup_suspend}" \
-            KLIO_SCHEDULEDBACKUP_IMMEDIATE="${klio_scheduledbackup_immediate}" \
-            envsubst '${REGION} ${KLIO_SCHEDULEDBACKUP_SUSPEND} ${KLIO_SCHEDULEDBACKUP_IMMEDIATE}' \
-            <"${tmpl_scheduledbackup_klio}"
+            envsubst '${REGION}' <"${tmpl_scheduledbackup_klio}"
     fi
 }
 

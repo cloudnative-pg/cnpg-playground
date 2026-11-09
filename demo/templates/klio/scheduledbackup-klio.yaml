@@ -3,11 +3,7 @@
 # automatically once the plugin is configured on the Cluster; no separate
 # schedule is needed for it.
 #
-# Rendered whenever KLIO=true. When BARMAN_CLOUD_PLUGIN=false, this is the
-# active backup engine (suspend: false). When both are enabled, it is
-# rendered suspended: a migration-readiness artifact, since Barman's own
-# ScheduledBackup already exercises continuous protection in that case.
-# Un-suspend it (and retire Barman's) to complete a migration to Klio.
+# Rendered whenever KLIO=true.
 # See https://cloudnative-pg.io/klio/user/backup_and_restore/
 apiVersion: postgresql.cnpg.io/v1
 kind: ScheduledBackup
@@ -22,5 +18,4 @@ spec:
     name: pg-${REGION}
   pluginConfiguration:
     name: klio.cnpg.io
-  suspend: ${KLIO_SCHEDULEDBACKUP_SUSPEND}
-  immediate: ${KLIO_SCHEDULEDBACKUP_IMMEDIATE}
+  immediate: true

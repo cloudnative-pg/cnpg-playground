@@ -152,7 +152,7 @@ fragments without modifying the repository.
 | `KLIO_PLUGINCONFIG_TEMPLATE=<file>` | Override `klio/pluginconfiguration.yaml` (used with `KLIO=true`) |
 | `KLIO_CLUSTER_PARAMS_TEMPLATE=<file>` | Override `klio/cluster-klio-params.yaml` (used with `KLIO=true`) |
 | `KLIO_PG_HBA_TEMPLATE=<file>` | Override `klio/postgresql-pg-hba.yaml` (used with `KLIO=true`) |
-| `SCHEDULEDBACKUP_KLIO_TEMPLATE=<file>` | Override `klio/scheduledbackup-klio.yaml` (used with `KLIO=true`; rendered active when `BARMAN_CLOUD_PLUGIN=false`, suspended as a migration-readiness artifact otherwise) |
+| `SCHEDULEDBACKUP_KLIO_TEMPLATE=<file>` | Override `klio/scheduledbackup-klio.yaml` (used with `KLIO=true`; rendered whenever `KLIO=true`) |
 | `KLIO_BUCKET_INIT_JOB_TEMPLATE=<file>` | Override `klio/bucket-init-job.yaml`, the Job that creates the `klio` bucket ahead of installation (used with `KLIO=true`) |
 | `KLIO_BUCKET_REMOVE_JOB_TEMPLATE=<file>` | Override `klio/bucket-remove-job.yaml`, `demo/teardown.sh`'s equivalent Job that removes the `klio` bucket |
 | `KLIO_READONLY_SERVER_TEMPLATE=<file>` | Override `klio/readonly-server.yaml`, the read-only Server + PluginConfiguration rendered per other region when `BARMAN_CLOUD_PLUGIN=false` and multiple regions are active |
