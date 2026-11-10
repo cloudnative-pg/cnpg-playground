@@ -40,8 +40,21 @@ metadata:
 spec:
   clusterName: pg-${REGION}
   serverAddress: klio-${REGION}.default
-  clientSecretName: pg-${REGION}-restore-klio-user
-  serverSecretName: klio-${REGION}-tls
+  tls:
+    clientIdentity:
+      volume:
+        secret:
+          secretName: pg-${REGION}-restore-klio-user
+      certPath: tls.crt
+      keyPath: tls.key
+    serverCa:
+      volume:
+        secret:
+          secretName: klio-${REGION}-ca
+          items:
+            - key: ca.crt
+              path: ca.crt
+      path: ca.crt
   tier2:
     enableRecovery: true
 ---

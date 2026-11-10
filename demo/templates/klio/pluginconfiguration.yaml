@@ -29,17 +29,27 @@ metadata:
 spec:
   clusterName: pg-${REGION}
   serverAddress: klio-${REGION}.default
-  clientSecretName: klio-${REGION}-client
-  serverSecretName: klio-${REGION}-tls
+  tls:
+    clientIdentity:
+      volume:
+        secret:
+          secretName: klio-${REGION}-client
+      certPath: tls.crt
+      keyPath: tls.key
+    serverCa:
+      volume:
+        secret:
+          secretName: klio-${REGION}-ca
+          items:
+            - key: ca.crt
+              path: ca.crt
+      path: ca.crt
+  # Number of most recent backups kept per tier
   tier1:
     retention:
-      keepLatest: 10
-      keepDaily: 7
-      keepWeekly: 4
+      latest: 2
   tier2:
     enableBackup: true
     enableRecovery: true
     retention:
-      keepDaily: 7
-      keepWeekly: 4
-      keepMonthly: 6
+      latest: 4
