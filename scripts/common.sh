@@ -46,6 +46,16 @@ RUSTFS_ROOT_PASSWORD="${RUSTFS_ROOT_PASSWORD:-Cl0udNativePGRocks}"
 RUSTFS_RC_VERSION="${RUSTFS_RC_VERSION:-v0.1.38}"
 RUSTFS_RC_IMAGE="${RUSTFS_RC_IMAGE:-rustfs/rc:${RUSTFS_RC_VERSION}}"
 
+# Optional pull-through registry cache for the Kind nodes (see
+# scripts/registry-cache.sh). Opt in with REGISTRY_CACHE=true on setup; the
+# cache survives teardown unless REMOVE_REGISTRY_CACHE=true is set.
+REGISTRY_CACHE="${REGISTRY_CACHE:-false}"
+REMOVE_REGISTRY_CACHE="${REMOVE_REGISTRY_CACHE:-false}"
+REGISTRY_CACHE_BASE_NAME="${REGISTRY_CACHE_BASE_NAME:-kind-registry-cache}"
+# renovate: datasource=docker depName=registry
+REGISTRY_CACHE_VERSION="${REGISTRY_CACHE_VERSION:-3.0.0}"
+REGISTRY_CACHE_IMAGE="${REGISTRY_CACHE_IMAGE:-registry:${REGISTRY_CACHE_VERSION}}"
+
 # --- Common Prerequisite Checks ---
 REQUIRED_COMMANDS="kind kubectl grep sed"
 for cmd in $REQUIRED_COMMANDS; do

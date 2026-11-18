@@ -27,6 +27,8 @@
 # Source the common setup script
 # shellcheck source=scripts/common.sh
 source "$(dirname "$0")/common.sh"
+# shellcheck source=scripts/registry-cache.sh
+source "$(dirname "$0")/registry-cache.sh"
 
 # --- Main Logic ---
 # Determine regions from arguments, or auto-detect if none are provided
@@ -79,6 +81,15 @@ for region in "${REGIONS[@]}"; do
         kubectl config delete-cluster "${K8S_CLUSTER_NAME}" --kubeconfig "${KUBE_CONFIG_PATH}" >/dev/null 2>&1 || true
     fi
 done
+
+# The registry caches are kept by default so the next setup reuses the
+# downloaded images; they are shared by all regions, so only remove them
+# when explicitly asked.
+if [ "${REMOVE_REGISTRY_CACHE}" == "true" ]; then
+    remove_registry_cache
+else
+    echo "🔷 Keeping registry caches, if any (set REMOVE_REGISTRY_CACHE=true to delete them)."
+fi
 
 echo ""
 echo "✅ Cleanup complete!"
