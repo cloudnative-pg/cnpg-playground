@@ -39,6 +39,9 @@ source "$(dirname "$0")/common.sh"
 # Provides deploy_csi_host_path()
 # shellcheck source=scripts/csi-hostpath.sh
 source "$(dirname "$0")/csi-hostpath.sh"
+# Provides start_registry_cache(), configure_registry_cache_nodes()
+# shellcheck source=scripts/registry-cache.sh
+source "$(dirname "$0")/registry-cache.sh"
 
 # Optionally deploy the CSI hostpath driver + volume snapshot support (single
 # node). Disabled by default; opt in with DEPLOY_CSI_HOSTPATH=true.
@@ -81,6 +84,11 @@ cd "${REPO_ROOT}" || exit 1
 kind_config_path="${REPO_ROOT}/k8s/kind-cluster.yaml"
 
 # --- Phase 1: Provision Clusters and RustFS Instances ---
+if [ "${REGISTRY_CACHE}" == "true" ]; then
+    start_registry_cache
+else
+    echo "⏭️  Skipping registry cache (set REGISTRY_CACHE=true to enable)."
+fi
 current_objectstore_port=${RUSTFS_BASE_PORT}
 declare -a all_objectstore_names=()
 
@@ -109,6 +117,10 @@ for region in "${REGIONS[@]}"; do
         export KIND_EXPERIMENTAL_PROVIDER=podman
     fi
     kind create cluster --config "${kind_config_path}" --name "${K8S_CLUSTER_NAME}"
+
+    if [ "${REGISTRY_CACHE}" == "true" ]; then
+        configure_registry_cache_nodes "${K8S_CLUSTER_NAME}"
+    fi
 
     echo "🏷️  Labeling nodes in '${K8S_CLUSTER_NAME}'..."
     kubectl label node -l postgres.node.kubernetes.io node-role.kubernetes.io/postgres=

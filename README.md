@@ -104,11 +104,34 @@ override the default playground configuration:
 | `K8S_NAME` | `k8s-` | Base name used when creating Kind clusters |
 | `K8S_CONTEXT_PREFIX` | `kind-` | Prefix added to Kind cluster names to form kubectl context names |
 | `DEPLOY_CSI_HOSTPATH` | `false` | Deploy the single-node CSI hostpath driver with volume snapshot support |
+| `REGISTRY_CACHE` | `false` | Run pull-through registry caches (docker.io, ghcr.io, quay.io, registry.k8s.io) so images survive teardown |
+| `REMOVE_REGISTRY_CACHE` | `false` | On `teardown.sh`, also delete the registry caches and their cached images |
 
 Example:
 
 ```bash
 RUSTFS_ROOT_USER=myuser RUSTFS_ROOT_PASSWORD=mypassword ./scripts/setup.sh
+```
+
+### Caching Images Across Teardowns (optional)
+
+Kind nodes pull images with their own containerd, so nothing is cached on the
+host and every new cluster downloads everything again. Set `REGISTRY_CACHE=true`
+to run one pull-through registry container per upstream registry
+(`docker.io`, `ghcr.io`, `quay.io`, `registry.k8s.io`) and point every node at
+them:
+
+```bash
+REGISTRY_CACHE=true ./scripts/setup.sh
+```
+
+The caches are backed by named volumes and are kept by `./scripts/teardown.sh`,
+so the next setup pulls from the local cache. The upstream registry stays as a
+fallback. The first run is as slow as before, since it fills the cache. To
+delete the caches too:
+
+```bash
+REMOVE_REGISTRY_CACHE=true ./scripts/teardown.sh
 ```
 
 ### Connecting to the Kubernetes Clusters
