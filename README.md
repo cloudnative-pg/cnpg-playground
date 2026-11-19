@@ -42,6 +42,8 @@ These tools streamline working with the CNPG Playground.
 
 ## Local Environment Overview
 
+Note: Ensure that your Docker (or Podman) has allocated at least 6 GB memory or the container runtime will run out of memory errors. This will crash the kind clusters that the installation script has created.
+
 This environment emulates a two-region infrastructure (EU for Europe and NA
 for North America), with each region containing:
 
