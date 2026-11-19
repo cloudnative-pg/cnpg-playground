@@ -15,6 +15,7 @@ on a Unix-based system:
 - [Kubectl](https://kubernetes.io/docs/tasks/tools/)
 - [The `cnpg` plugin for `kubectl`](https://cloudnative-pg.io/documentation/current/kubectl-plugin/)
 - [Kind](https://kind.sigs.k8s.io/)
+- [The `cmctl` tool](https://cert-manager.io/docs/reference/cmctl/)
 
 You don’t need superuser privileges to run the scripts, but elevated
 permissions may be required to install the prerequisites.
