@@ -116,7 +116,7 @@ for region in "${REGIONS[@]}"; do
     if [ "$CONTAINER_PROVIDER" == "podman" ]; then
         export KIND_EXPERIMENTAL_PROVIDER=podman
     fi
-    kind create cluster --config "${kind_config_path}" --name "${K8S_CLUSTER_NAME}"
+    kind create cluster --config "${kind_config_path}" --name "${K8S_CLUSTER_NAME}" --retain
 
     if [ "${REGISTRY_CACHE}" == "true" ]; then
         configure_registry_cache_nodes "${K8S_CLUSTER_NAME}"
