@@ -128,7 +128,7 @@ CSI_DRIVER_HOST_PATH_DEPLOY_DIR="${CSI_DRIVER_HOST_PATH_DEPLOY_DIR:-kubernetes-l
 # renovate: datasource=github-releases depName=kubernetes-csi/external-snapshotter
 EXTERNAL_SNAPSHOTTER_VERSION="${EXTERNAL_SNAPSHOTTER_VERSION:-v8.7.0}"
 # renovate: datasource=github-releases depName=kubernetes-csi/external-provisioner
-EXTERNAL_PROVISIONER_VERSION="${EXTERNAL_PROVISIONER_VERSION:-v6.4.0}"
+EXTERNAL_PROVISIONER_VERSION="${EXTERNAL_PROVISIONER_VERSION:-v6.4.1}"
 # renovate: datasource=github-releases depName=kubernetes-csi/external-attacher
 EXTERNAL_ATTACHER_VERSION="${EXTERNAL_ATTACHER_VERSION:-v4.13.0}"
 # renovate: datasource=github-releases depName=kubernetes-csi/external-resizer
