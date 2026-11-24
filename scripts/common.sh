@@ -126,7 +126,7 @@ CSI_DRIVER_HOST_PATH_VERSION="${CSI_DRIVER_HOST_PATH_VERSION:-v1.19.0}"
 # kubernetes-1.35) to pin it.
 CSI_DRIVER_HOST_PATH_DEPLOY_DIR="${CSI_DRIVER_HOST_PATH_DEPLOY_DIR:-kubernetes-latest}"
 # renovate: datasource=github-releases depName=kubernetes-csi/external-snapshotter
-EXTERNAL_SNAPSHOTTER_VERSION="${EXTERNAL_SNAPSHOTTER_VERSION:-v8.7.0}"
+EXTERNAL_SNAPSHOTTER_VERSION="${EXTERNAL_SNAPSHOTTER_VERSION:-v8.7.1}"
 # renovate: datasource=github-releases depName=kubernetes-csi/external-provisioner
 EXTERNAL_PROVISIONER_VERSION="${EXTERNAL_PROVISIONER_VERSION:-v6.4.0}"
 # renovate: datasource=github-releases depName=kubernetes-csi/external-attacher
